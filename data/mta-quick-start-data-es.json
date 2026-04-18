@@ -1,0 +1,204 @@
+﻿{
+    "airports":  [
+                     {
+                         "id":  "APT-YOUR-MONEY",
+                         "name":  "Tu Dinero",
+                         "type":  "standard",
+                         "status":  "active",
+                         "createdAt":  "2026-01-01T00:00:00.000Z"
+                     },
+                     {
+                         "id":  "APT-YOUR-SPENDING",
+                         "name":  "Tus Consumos",
+                         "type":  "standard",
+                         "status":  "active",
+                         "createdAt":  "2026-01-01T00:00:00.000Z"
+                     },
+                     {
+                         "id":  "APT-YOUR-SECURITY",
+                         "name":  "Tu Seguridad",
+                         "type":  "standard",
+                         "status":  "active",
+                         "createdAt":  "2026-01-01T00:00:00.000Z"
+                     },
+                     {
+                         "id":  "APT-YOUR-CREDIT",
+                         "name":  "Tu Tarjeta de Crédito",
+                         "type":  "credit",
+                         "status":  "active",
+                         "createdAt":  "2026-01-01T00:00:00.000Z"
+                     }
+                 ],
+    "terminals":  [
+                      {
+                          "id":  "TERM-YOUR-SALARY",
+                          "name":  "Tu Salario",
+                          "alias":  "SALARY",
+                          "airportId":  "APT-YOUR-MONEY",
+                          "type":  "Income",
+                          "returnable":  false,
+                          "isDefault":  true,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      },
+                      {
+                          "id":  "TERM-YOUR-CHECKING",
+                          "name":  "Tu Cuenta Corriente",
+                          "alias":  "CHECKIN",
+                          "airportId":  "APT-YOUR-MONEY",
+                          "type":  "Transit",
+                          "returnable":  false,
+                          "isDefault":  true,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      },
+                      {
+                          "id":  "TERM-YOUR-EXPENSES",
+                          "name":  "Tus Gastos",
+                          "alias":  "EXPENSES",
+                          "airportId":  "APT-YOUR-SPENDING",
+                          "type":  "Expense",
+                          "returnable":  false,
+                          "isDefault":  true,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      },
+                      {
+                          "id":  "TERM-YOUR-SAVINGS",
+                          "name":  "Tus Ahorros",
+                          "alias":  "SAVINGS",
+                          "airportId":  "APT-YOUR-SECURITY",
+                          "type":  "Expense",
+                          "returnable":  true,
+                          "isDefault":  true,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      },
+                      {
+                          "id":  "TERM-YOUR-EMERGENCY",
+                          "name":  "Tu Fondo de Emergencia",
+                          "alias":  "EMERGENCY",
+                          "airportId":  "APT-YOUR-SECURITY",
+                          "type":  "Expense",
+                          "returnable":  true,
+                          "isDefault":  false,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      },
+                      {
+                          "id":  "TERM-YOUR-INVESTMENTS",
+                          "name":  "Tus Inversiones",
+                          "alias":  "INVEST",
+                          "airportId":  "APT-YOUR-SECURITY",
+                          "type":  "Expense",
+                          "returnable":  true,
+                          "isDefault":  false,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      },
+                      {
+                          "id":  "TERM-CREDIT-INCOME",
+                          "name":  "Ingreso de Crédito",
+                          "alias":  "CR-IN",
+                          "airportId":  "APT-YOUR-CREDIT",
+                          "type":  "Income",
+                          "returnable":  false,
+                          "isDefault":  false,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      },
+                      {
+                          "id":  "TERM-CREDIT-REPAYMENT",
+                          "name":  "Pago de Deuda",
+                          "alias":  "CR-OUT",
+                          "airportId":  "APT-YOUR-CREDIT",
+                          "type":  "Expense",
+                          "returnable":  false,
+                          "isDefault":  false,
+                          "status":  "active",
+                          "createdAt":  "2026-01-01T00:00:00.000Z"
+                      }
+                  ],
+    "passengerGroups":  [
+                            {
+                                "id":  "PG-YOUR-CREDIT-CARD",
+                                "name":  "Tu Tarjeta de Crédito",
+                                "type":  "liability",
+                                "totalAmount":  0,
+                                "creditAirportId":  "APT-YOUR-CREDIT",
+                                "extendable":  true,
+                                "createdAt":  "2026-01-01T12:00:00.000Z"
+                            },
+                            {
+                                "id":  "PG-STARTER-SALES",
+                                "name":  "Ventas Iniciales",
+                                "type":  "external",
+                                "totalAmount":  85,
+                                "creditAirportId":  null,
+                                "extendable":  false,
+                                "cargo":  [
+                                              {
+                                                  "productId":  "MTA01-P000001",
+                                                  "quantity":  3,
+                                                  "unitPrice":  20,
+                                                  "amount":  60
+                                              },
+                                              {
+                                                  "productId":  "MTA01-P000002",
+                                                  "quantity":  1,
+                                                  "unitPrice":  25,
+                                                  "amount":  25
+                                              }
+                                          ],
+                                "createdAt":  "2026-01-05T09:00:00.000Z"
+                            }
+                        ],
+    "flights":  [
+                    {
+                        "id":  "MTA01-F000001",
+                        "name":  "Llegada: Ventas Iniciales",
+                        "passengerGroupId":  "PG-STARTER-SALES",
+                        "originTerminalId":  null,
+                        "destinationTerminalId":  "TERM-YOUR-SALARY",
+                        "amount":  85,
+                        "status":  "Completed",
+                        "date":  "2026-01-05T00:00:00.000Z",
+                        "ordinal":  0,
+                        "createdAt":  "2026-01-05T09:00:00.000Z",
+                        "sourceFlightId":  null
+                    },
+                    {
+                        "id":  "MTA01-F000002",
+                        "name":  "Conexion: Ventas Iniciales",
+                        "passengerGroupId":  "PG-STARTER-SALES",
+                        "originTerminalId":  "TERM-YOUR-SALARY",
+                        "destinationTerminalId":  "TERM-YOUR-CHECKING",
+                        "amount":  85,
+                        "status":  "Completed",
+                        "date":  "2026-01-05T00:00:00.000Z",
+                        "ordinal":  1,
+                        "createdAt":  "2026-01-05T09:01:00.000Z",
+                        "sourceFlightId":  null
+                    }
+                ],
+    "products":  [
+                     {
+                         "id":  "MTA01-P000001",
+                         "name":  "Tu Producto Estrella",
+                         "defaultUnitPrice":  20,
+                         "status":  "active",
+                         "createdAt":  "2026-01-01T00:00:00.000Z",
+                         "code":  "STAR"
+                     },
+                     {
+                         "id":  "MTA01-P000002",
+                         "name":  "Otro Producto",
+                         "defaultUnitPrice":  25,
+                         "status":  "active",
+                         "createdAt":  "2026-01-01T00:00:00.000Z",
+                         "code":  "OTHER"
+                     }
+                 ]
+}
+
+

@@ -1,0 +1,1010 @@
+﻿<!--
+  Money Travel Agency (MTA)
+  Created by Gabriel Capote (capotec.marketing@gmail.com)
+  Copyright (c) 2026
+  Licensed under MIT License
+  https://github.com/gucapote/money-travel-agency
+  
+  The original concept, design, and implementation are protected intellectual property.
+  Please provide attribution if you use or fork this project.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Travel Agency</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple/iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MTA">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- No-cache meta -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- App stylesheet -->
+    <link rel="stylesheet" href="css/mta-styles.css">
+    <script type="module">
+    import { t, i18n, setLanguage, getCurrentLanguage } from './scripts/mta-i18n.js';
+    window.t = t;
+    window.i18n = i18n;
+    window.setLanguage = setLanguage;
+    window.getCurrentLanguage = getCurrentLanguage;
+    window.__mta_i18n = { setLanguage, getCurrentLanguage };
+    // Get initial language
+    window.__mta_current_lang = getCurrentLanguage();
+    </script>
+    <script>
+        (function(){
+            try{
+                if(location.protocol === 'file:'){
+                    var bust = '?v=' + Date.now();
+                    var l = document.getElementById('app-styles');
+                    if(l) l.href = (l.getAttribute('href')||'css/mta-styles.css') + bust;
+                    var l2 = document.getElementById('control-tower-styles');
+                    if(l2) l2.href = (l2.getAttribute('href')||'css/mta-ui-control-tower.css') + bust;
+                }
+            }catch(e){/* no-op */}
+        })();
+    </script>
+</head>
+<body>
+<div class="page">
+    <div class="container-fluid p-0">
+    <div class="d-flex align-items-center justify-content-between app-header">
+        <button id="mobile-nav-toggle" class="btn btn-link d-md-none" aria-label="Open navigation" aria-expanded="false">&#9776;</button>
+        <div class="text-center flex-grow-1">
+            <h1 class="mb-0 mta-brand__title" aria-label="Money Travel Agency">
+                <span class="mta-brand__word"><span class="mta-brand__symbol mta-brand__symbol--1">&#8380;</span><span class="mta-brand__text">oney</span></span>
+                <span class="mta-brand__word"><span class="mta-brand__symbol mta-brand__symbol--2">&#8366;</span><span class="mta-brand__text">ravel</span></span>
+                <span class="mta-brand__word"><span class="mta-brand__symbol mta-brand__symbol--3">&#8371;</span><span class="mta-brand__text">gency</span></span>
+            </h1>
+        </div>
+        <div class="header-spacer"></div>
+    </div>
+
+    <!-- Mobile nav -->
+    <nav id="mobile-nav" class="mobile-nav d-none" role="menu" aria-label="Main menu">
+        <ul class="list-unstyled mb-0">
+            <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="controlTower" data-toggle="tab" href="#dashboard">&#128508; Control Tower</a></li>
+            <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="arrivals" data-toggle="tab" href="#income">&#128748; Arrivals</a></li>
+            <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="departures" data-icon="&#128747;" data-toggle="tab" href="#flights">&#128747; Departures</a></li>
+            <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="terminals" data-toggle="tab" href="#terminals">&#127970; Terminals</a></li>
+            <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="learn" data-toggle="tab" href="#learn">&#128218; Learn</a></li>
+            <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="tools" data-icon="&#128736;" data-toggle="tab" href="#dev">&#128736; Tools</a></li>
+        </ul>
+    </nav>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs d-none d-md-flex" role="tablist">
+        <li class="nav-item"><a class="nav-link active translatable" data-i18n="controlTower" data-toggle="tab" href="#dashboard">&#128508; Control Tower</a></li>
+        <li class="nav-item"><a class="nav-link translatable" data-i18n="arrivals" data-toggle="tab" href="#income">&#128748; Arrivals</a></li>
+        <li class="nav-item"><a class="nav-link translatable" data-i18n="departures" data-icon="&#128747;" data-toggle="tab" href="#flights">&#128747; Departures</a></li>
+        <li class="nav-item"><a class="nav-link translatable" data-i18n="terminals" data-toggle="tab" href="#terminals">&#127970; Terminals</a></li>
+        <li class="nav-item"><a class="nav-link translatable" data-i18n="learn" data-toggle="tab" href="#learn">&#128218; Learn</a></li>
+        <li class="nav-item"><a class="nav-link translatable" data-i18n="tools" data-icon="&#128736;" data-toggle="tab" href="#dev">&#128736; Tools</a></li>
+    </ul>
+
+    <div class="tab-content app-content">
+        
+        <!-- Tab: Dashboard -->
+        <div class="tab-pane fade show active" id="dashboard">
+            <div class="mt-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mta-canonical-section">
+                            <div class="mta-canonical-section__header">
+                                <h5 class="mta-canonical-section__title mb-0 translatable" data-i18n="controlTower">&#128508; CONTROL TOWER</h5>
+                                <div class="mta-canonical-section__actions d-flex align-items-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary language-btn active" data-lang="en" onclick="window.setLanguage('en')">English</button>
+                                        <button type="button" class="btn btn-outline-secondary language-btn" data-lang="es" onclick="window.setLanguage('es')">Espa&#241;ol</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="flight-board" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Arrivals -->
+        <div class="tab-pane fade" id="income">
+            <div class="mt-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mta-canonical-section">
+                            <div class="mta-canonical-section__header">
+                                <div class="mta-section-header__main d-flex align-items-center flex-wrap">
+                                    <h5 id="arrivals-section-title" class="mta-canonical-section__title mb-0">
+                                        <span class="mta-section-title-icon" aria-hidden="true">&#128748;</span>
+                                        <span id="arrivals-section-title-text" class="translatable" data-i18n="arrivals">ARRIVALS</span>
+                                        <span id="arrivals-count" class="ml-2">(0)</span>
+                                    </h5>
+                                    <span id="arrivals-view-separator" class="mx-2 mta-hidden">&gt;</span>
+                                    <select id="arrivals-cargo-view-select" class="form-control form-control-sm mta-hidden" onchange="setArrivalCargoView(this.value)" style="width: auto;">
+                                        <option value="last-7-days" class="translatable" data-i18n="ui.arrivalsCargoView.last7Days">LAST 7 DAYS</option>
+                                        <option value="last-12-months" class="translatable" data-i18n="ui.arrivalsCargoView.last12Months">LAST 12 MONTHS</option>
+                                        <option value="by-year" class="translatable" data-i18n="ui.arrivalsCargoView.byYear">BY YEAR</option>
+                                    </select>
+                                </div>
+                                <div class="mta-canonical-section__actions d-flex align-items-center">
+                                    <button class="btn btn-outline-primary mr-2 translatable mta-hidden" id="btn-product-manager" onclick="showProductManager()" data-i18n="newAction">New</button>
+                                    <button class="btn btn-primary mr-2 translatable" id="btn-new-arrival" onclick="showRegisterArrivalForm()" data-i18n="newAction">New</button>
+                                    <button type="button" class="mta-section-link-toggle translatable" id="arrivals-view-switch" data-target-view="arrivals-cargo" data-i18n="ui.toggleView.goToCargo" onclick="switchArrivalsView(this.getAttribute('data-target-view'))">Cargo &gt;</button>
+                                </div>
+                            </div>
+                            <div id="arrivals-type-filter" class="mta-filter-toggle-row">
+                                <button type="button" class="mta-filter-toggle-btn active translatable" data-filter="all" data-i18n="ui.filter.all" onclick="setArrivalTypeFilter('all')">All</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="open" data-i18n="arrival.openTransit" onclick="setArrivalTypeFilter('open')">Open Transit</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="restricted" data-i18n="arrival.restrictedTransit" onclick="setArrivalTypeFilter('restricted')">Restricted Transit</button>
+                                <label id="arrivals-group-toggle-wrap" class="form-check form-check-inline mb-0 ml-2">
+                                    <input class="form-check-input" type="checkbox" id="arrivals-group-toggle" onchange="toggleGroupArrivals(this.checked)">
+                                    <span class="form-check-label translatable" data-i18n="arrival.groupArrivalsToggle">Group arrivals</span>
+                                </label>
+                            </div>
+                            <div id="arrivals-cargo-filter" class="mta-filter-toggle-row mta-hidden"></div>
+                            <div id="arrivals-content" class="mta-canonical-section__content mt-0"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Departures -->
+        <div class="tab-pane fade" id="flights">
+            <div class="mt-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mta-canonical-section">
+                            <div class="mta-canonical-section__header">
+                                <div class="d-flex align-items-center">
+                                    <h5 id="departures-section-title" class="mta-canonical-section__title mb-0">
+                                        <span class="mta-section-title-icon" aria-hidden="true">&#128747;</span>
+                                        <span id="departures-section-title-text" class="translatable" data-i18n="departures">DEPARTURES</span>
+                                    </h5>
+                                    <span class="mx-2">&gt;</span>
+                                    <select id="departures-view-select" class="form-control form-control-sm" onchange="setDepartureViewFilter(this.value)" style="width: auto;">
+                                        <option value="reservations" class="translatable" data-i18n="ui.departuresView.yetToTravel">YET TO TRAVEL</option>
+                                        <option value="all" class="translatable" data-i18n="ui.departuresView.allCaps">ALL</option>
+                                        <option value="completed" class="translatable" data-i18n="ui.departuresView.completedCaps">COMPLETED</option>
+                                        <option value="returned" class="translatable" data-i18n="ui.departuresView.returnedCaps">RETURNED</option>
+                                    </select>
+                                    <span id="departures-count" class="ml-2">(0)</span>
+                                </div>
+                                <div class="mta-canonical-section__actions d-flex align-items-center">
+                                    <button class="btn btn-primary translatable" onclick="showCreatePassengerForm()" data-i18n="newAction">New</button>
+                                </div>
+                            </div>
+                            <div id="departures-semaphore-filter" class="mta-filter-toggle-row">
+                                <button type="button" class="mta-filter-toggle-btn active translatable" data-filter="all" data-i18n="ui.filter.all" onclick="setDepartureSemaphoreFilter('all')">All</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="connection" data-i18n="departureRootOneWayConnection" onclick="setDepartureSemaphoreFilter('connection')">One-way (Connection)</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="oneway" data-i18n="oneWayLabel" onclick="setDepartureSemaphoreFilter('oneway')">One-way</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="roundtrip" data-i18n="roundtripLabel" onclick="setDepartureSemaphoreFilter('roundtrip')">Roundtrip</button>
+                            </div>
+                            <div id="flights-list" class="mta-canonical-section__content mt-0"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Terminals -->
+        <div class="tab-pane fade" id="terminals">
+            <div class="mt-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mta-canonical-section">
+                            <div class="mta-canonical-section__header">
+                                <h5 class="mta-canonical-section__title mb-0 translatable" data-i18n="terminals">&#127970; TERMINALS</h5>
+                                <div class="mta-canonical-section__actions d-flex align-items-center">
+                                    <button class="btn btn-primary translatable mta-hidden" id="btn-new-airport" data-i18n="newAction" onclick="showCreateAirportForm()">New</button>
+                                    <button class="btn btn-primary translatable" id="btn-new-terminal" data-i18n="newAction" onclick="showCreateTerminalForm()">New</button>
+                                    <button type="button" class="mta-section-link-toggle translatable" id="terminals-view-switch" data-target-view="airports-terminals" data-i18n="ui.toggleView.goToAirports" onclick="switchTerminalsView(this.getAttribute('data-target-view'))">Go to Airports</button>
+                                </div>
+                            </div>
+                            <div id="terminals-type-filter" class="mta-filter-toggle-row">
+                                <button type="button" class="mta-filter-toggle-btn active translatable" data-filter="all" data-i18n="ui.terminalsFilter.all" onclick="setTerminalTypeFilter('all')">All</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="checkin" data-i18n="terminalCheckIn" onclick="setTerminalTypeFilter('checkin')">Check-in</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="connection" data-i18n="terminalConnection" onclick="setTerminalTypeFilter('connection')">Connection</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="checkout-oneway" data-i18n="ui.terminalsFilter.checkoutOneWay" onclick="setTerminalTypeFilter('checkout-oneway')">Checkout (One-way)</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="checkout-roundtrip" data-i18n="ui.terminalsFilter.checkoutRoundtrip" onclick="setTerminalTypeFilter('checkout-roundtrip')">Checkout (Roundtrip)</button>
+                            </div>
+                            <div id="airports-type-filter" class="mta-filter-toggle-row mta-hidden">
+                                <button type="button" class="mta-filter-toggle-btn active translatable" data-filter="all" data-i18n="ui.filter.all" onclick="setAirportTypeFilter('all')">All</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="normal" data-i18n="normalConditions" onclick="setAirportTypeFilter('normal')">Normal Conditions</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="alert" data-i18n="meteorologicalAlert" onclick="setAirportTypeFilter('alert')">Weather Alert</button>
+                            </div>
+                            <div id="terminals-list" class="mta-canonical-section__content mt-0"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Learn -->
+        <div class="tab-pane fade" id="learn">
+            <div class="mt-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mta-canonical-section">
+                            <div class="mta-canonical-section__header">
+                                <h5 class="mta-canonical-section__title mb-0 translatable" data-i18n="learn">&#128218; Learn</h5>
+                                <div class="mta-canonical-section__actions d-flex align-items-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary language-btn active" data-lang="en" onclick="window.setLanguage('en')">English</button>
+                                        <button type="button" class="btn btn-outline-secondary language-btn" data-lang="es" onclick="window.setLanguage('es')">Espa&#241;ol</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Start Here Section -->
+                            <div class="card mb-3 mt-3">
+                                <div class="card-header bg-primary text-white">
+                                    <strong class="translatable" data-i18n="ui.learn.startHere.title">Start Here</strong>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-3 translatable" data-i18n="ui.learn.startHere.intro">MTA helps you answer four practical questions:</p>
+                                    <ul class="mb-3">
+                                        <li class="translatable" data-i18n="ui.learn.startHere.question1">Where does my money go?</li>
+                                        <li class="translatable" data-i18n="ui.learn.startHere.question2">How does it move?</li>
+                                        <li class="translatable" data-i18n="ui.learn.startHere.question3">Where is it now?</li>
+                                        <li class="translatable" data-i18n="ui.learn.startHere.question4">What commitments do I currently have?</li>
+                                    </ul>
+                                    <p class="mb-0 translatable" data-i18n="ui.learn.startHere.metaphor">MTA uses a travel metaphor because money moves between places, can stop in transit, can be committed for later, and can sometimes return.</p>
+                                </div>
+                            </div>
+
+                            <!-- QuickStart Section -->
+                            <div class="card mb-3 mt-3">
+                                <div class="card-header bg-success text-white">
+                                    <strong class="translatable" data-i18n="ui.learn.quickstart.title">Quick Start</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div id="quickstart-steps" class="p-0">
+                                    <!-- Steps will be rendered here -->
+                                    </div>
+                                    <button class="btn btn-warning btn-sm mt-3 translatable" id="reset-quickstart-data" data-i18n="ui.learn.resetQuickStart">&#128260; Quick Start Data</button>
+                                    <p class="text-muted small mt-2 mb-0 translatable" data-i18n="ui.learn.resetQuickStartHint">Load a ready-made structure so you can explore MTA immediately.</p>
+                                </div>
+                            </div>
+
+                            <!-- Core Concepts Section -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-info text-white">
+                                    <strong class="translatable" data-i18n="ui.learn.core.title">Core Concepts</strong>
+                                </div>
+                                <div class="card-body p-0" id="core-concepts">
+                                    <!-- Concepts will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- How To Read MTA Section -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-secondary text-white">
+                                    <strong class="translatable" data-i18n="ui.learn.reading.title">How to Read MTA</strong>
+                                </div>
+                                <div class="card-body p-0" id="accounting-modes">
+                                    <!-- Modes will be rendered here -->
+                                </div>
+                            </div>
+
+                            <div class="mt-3 text-muted small">
+                                <p class="mb-2 translatable" data-i18n="ui.common.betaDisclaimer">This is a beta version of MTA.<br>The model and UI may evolve.<br>Please export your data periodically.</p>
+                                <p class="mb-0 translatable" data-i18n="ui.common.authorshipFooter">Money Travel Agency (MTA)<br>&copy; 2026 Gabriel Capote</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Dev -->
+        <div class="tab-pane fade" id="dev">
+            <div class="mt-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mta-canonical-section">
+                            <div class="mta-canonical-section__header">
+                                <h5 class="mta-canonical-section__title mb-0 translatable" data-i18n="tools" data-icon="&#128736;">&#128736; Tools</h5>
+                                <div class="mta-canonical-section__actions d-flex align-items-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary language-btn active" data-lang="en" onclick="window.setLanguage('en')">English</button>
+                                        <button type="button" class="btn btn-outline-secondary language-btn" data-lang="es" onclick="window.setLanguage('es')">Espa&#241;ol</button>
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <h6 class="mt-3 translatable" data-i18n="ui.tools.dataManagement">Data Management</h6>
+                            <div class="mta-tools-button-row">
+                                <button class="btn btn-success btn-sm translatable" id="import-json" data-i18n="ui.tools.importJson">&#128229; Import JSON</button>
+                                <button class="btn btn-info btn-sm translatable" id="export-json" data-i18n="ui.tools.exportJson">&#128203; Export JSON</button>
+                                <button class="btn btn-warning btn-sm translatable" id="reset-example-data" data-i18n="ui.tools.resetTestData">&#128260; Test Data</button>
+                            </div>
+                            <input type="file" id="file-input" accept=".json" class="mta-hidden">
+                            
+                            <hr>
+                            <h6 class="translatable" data-i18n="ui.tools.displayOptions">Display Options</h6>
+                            <button class="btn btn-outline-primary btn-sm translatable" id="ledger-mode-toggle" onclick="toggleLedgerMode()" data-i18n="ui.tools.enableRunning">&#128202; Enable running</button>
+                            <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.runningHint">Toggle running values across the main sections.</p>
+                            <button class="btn btn-outline-danger btn-sm translatable" id="delete-enabled-mode-toggle" onclick="toggleDeleteEnabledMode()" data-i18n="ui.tools.deleteEnabledMode">&#128465; Delete Enabled Mode</button>
+                            <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.deleteEnabledModeHint">Show delete actions across all entities so data mistakes can be corrected deliberately.</p>
+                            <button class="btn btn-outline-warning btn-sm translatable" id="sales-mode-toggle" onclick="toggleSalesMode()" data-i18n="ui.tools.salesMode">&#128722; Sales Mode</button>
+                            <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.salesModeHint">Enable cargo and product features for sales-oriented arrivals.</p>
+                            <div class="form-group mt-3 mb-2">
+                                <label class="small mb-1 translatable" for="default-arrival-name" data-i18n="ui.tools.defaultArrivalName">Default arrival name</label>
+                                <input type="text" class="form-control form-control-sm" id="default-arrival-name" oninput="setDefaultArrivalName(this.value)" placeholder="Example: Haircut">
+                            </div>
+                            <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.defaultArrivalNameHint">Use this as the initial name for new standard arrivals. You can still change it when creating the arrival.</p>
+                            <div class="form-group mt-3 mb-2">
+                                <label class="small mb-1 translatable" for="default-arrival-group-name" data-i18n="ui.tools.defaultArrivalGroupName">Default arrival group</label>
+                                <input type="text" class="form-control form-control-sm" id="default-arrival-group-name" oninput="setDefaultArrivalGroupName(this.value)" placeholder="Example: Week 14">
+                            </div>
+                            <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.defaultArrivalGroupNameHint">Use this as the initial group for new standard arrivals. Update it weekly or monthly if that matches your workflow.</p>
+                            <div class="form-group mt-3 mb-2">
+                                <label class="small mb-1 translatable" for="default-arrival-terminal" data-i18n="ui.tools.defaultArrivalTerminal">Default arrival terminal</label>
+                                <select class="form-control form-control-sm" id="default-arrival-terminal" onchange="setDefaultArrivalTerminal(this.value)">
+                                    <option value="" class="translatable" data-i18n="ui.tools.noDefaultArrivalTerminal">No default terminal</option>
+                                </select>
+                            </div>
+                            <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.defaultArrivalTerminalHint">Use this as the initial landing terminal for new arrivals. You can still change it when creating the arrival.</p>
+
+                            <hr>
+                            <h6 class="translatable" data-i18n="ui.tools.allData">All Data</h6>
+                            <button class="btn btn-outline-primary btn-sm translatable" id="dev-data-toggle" onclick="toggleDevData()" data-i18n="ui.tools.showAllData">&#128202; Show all data</button>
+                            <div id="dev-data" class="mta-hidden mt-3"></div>
+
+                            <div class="mt-3 text-muted small">
+                                <p class="mb-2 translatable" data-i18n="ui.common.betaDisclaimer">This is a beta version of MTA.<br>The model and UI may evolve.<br>Please export your data periodically.</p>
+                                <p class="mb-0 translatable" data-i18n="ui.common.authorshipFooter">Money Travel Agency (MTA)<br>&copy; 2026 Gabriel Capote</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="welcome-modal" class="modal-popup mta-hidden" role="dialog" aria-modal="true" aria-labelledby="welcome-modal-title">
+    <div class="modal-content mta-welcome-modal">
+        <h2 id="welcome-modal-title" class="mta-brand__title mta-welcome-modal__title" aria-label="Money Travel Agency">
+            <span class="mta-brand__word"><span class="mta-brand__symbol mta-brand__symbol--1">&#8380;</span><span class="mta-brand__text">oney</span></span>
+            <span class="mta-brand__word"><span class="mta-brand__symbol mta-brand__symbol--2">&#8366;</span><span class="mta-brand__text">ravel</span></span>
+            <span class="mta-brand__word"><span class="mta-brand__symbol mta-brand__symbol--3">&#8371;</span><span class="mta-brand__text">gency</span></span>
+        </h2>
+        <p class="mta-welcome-modal__message translatable" data-i18n="ui.welcome.intro">MTA helps you answer four key questions:</p>
+        <ul class="mta-welcome-modal__list">
+            <li class="translatable" data-i18n="ui.welcome.question1">Where does my money go?</li>
+            <li class="translatable" data-i18n="ui.welcome.question2">How does it move?</li>
+            <li class="translatable" data-i18n="ui.welcome.question3">Where is it now?</li>
+            <li class="translatable" data-i18n="ui.welcome.question4">What commitments do I currently have?</li>
+        </ul>
+        <p class="mta-welcome-modal__message translatable" data-i18n="ui.welcome.metaphor">We believe the travel metaphor fits money well: it moves, sometimes returns, and flows between different origins and destinations.</p>
+        <p class="mta-welcome-modal__message translatable" data-i18n="ui.welcome.goal">Its main goal is to make your commitments visible and help prevent unpleasant surprises.</p>
+        <p class="mta-welcome-modal__message translatable" data-i18n="ui.welcome.privacy">You don&rsquo;t need an account. Your data stays on your device &mdash; only you can access it.</p>
+        <label class="mta-welcome-modal__checkbox">
+            <input type="checkbox" id="welcome-modal-show-on-startup" checked>
+            <span class="translatable" data-i18n="ui.welcome.showOnStartup">Show this on startup</span>
+        </label>
+        <div class="mta-welcome-modal__actions">
+            <button type="button" id="welcome-modal-close" class="btn btn-primary translatable" data-i18n="ui.welcome.continue">Continue</button>
+        </div>
+        <div class="mta-welcome-modal__closing">
+            <p class="mta-welcome-modal__supporting translatable" data-i18n="ui.welcome.betaBody">MTA is still evolving. You may encounter small issues or missing features &mdash; your feedback helps improve the experience.</p>
+            <div class="mta-welcome-modal__footer">
+                <p class="translatable" data-i18n="ui.welcome.copyright">&copy; 2026 Gabriel Capote</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Popups -->
+<div id="register-arrival-popup" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5 id="arrival-modal-title" class="translatable" data-i18n="arrival.createArrivalTitle">&#128748; Create Arrival</h5>
+        <form id="income-form">
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="arrival.type">Type</strong>:</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="group-type" id="type-open" value="external" checked>
+                    <label class="form-check-label translatable" data-i18n="arrival.openTransit" for="type-open">
+                        Open Transit
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="group-type" id="type-liability" value="liability">
+                    <label class="form-check-label" for="type-liability">
+                        <span class="translatable" data-i18n="arrival.restrictedTransit">Restricted Transit</span>
+                        <button type="button" class="mta-help-icon" title="Restricted Transit: money arrives through a credit-backed path that needs more care." onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.restrictedTransit')">?</button>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="arrival.name">Name</strong>:</label>
+                    <input type="text" class="form-control" id="group-name" name="group-name" placeholder="Example: Dad's February Salary" required>
+            </div>
+            <div class="form-group" id="arrival-group-name-group">
+                <label><strong class="translatable" data-i18n="arrival.groupName">Arrival Group</strong>:</label>
+                <input type="text" class="form-control" id="group-group-name" name="group-group-name" placeholder="Example: Week 14">
+            </div>
+            <!-- Open Transit Fields (shown by default) -->
+            <div id="open-transit-fields">
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="arrival.landingDate">Landing Date</strong>:</label>
+                    <input type="date" class="form-control" id="group-landing-date" name="group-landing-date">
+                </div>
+                <div id="open-arrival-cargo-anchor"></div>
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="arrival.landedPassengers">Landed passengers</strong>: <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="income-amount" name="income-amount" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="arrival.landingTerminal">Landing Terminal</strong>: <span class="text-danger">*</span></label>
+                    <select class="form-control" id="group-landing-terminal" name="group-landing-terminal" required>
+                        <option value="" class="translatable" data-i18n="arrival.selectLandingTerminal">Select income terminal...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="arrival.firstTravelTo">First Travel To</strong>:</label>
+                    <select class="form-control" id="group-first-travel-to" name="group-first-travel-to">
+                        <option value="" class="translatable" data-i18n="arrival.selectFirstTravel">None (optional)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Restricted Transit Fields (hidden by default) -->
+            <div id="restricted-transit-fields" class="mta-hidden">
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="arrival.landingDate">Landing Date</strong>:</label>
+                    <input type="date" class="form-control" id="restricted-landing-date" name="restricted-landing-date">
+                </div>
+                <div id="restricted-arrival-cargo-anchor"></div>
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="arrival.creditAirport">Credit Airport</strong>: <span class="text-danger">*</span></label>
+                    <select class="form-control" id="group-credit-airport" name="group-credit-airport">
+                        <option value="" class="translatable" data-i18n="arrival.selectCreditAirport">Select credit airport...</option>
+                    </select>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="group-extendable">
+                    <label class="form-check-label" for="group-extendable">
+                        <span class="translatable" data-i18n="arrival.extendable">Open an arrival series</span>
+                        <button type="button" class="mta-help-icon" title="Open an arrival series: keep this credit route available for repeated future arrivals. The system will use the related credit airport and its managed terminals automatically." onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.extendable')">?</button>
+                    </label>
+                </div>
+                <div id="non-extendable-amount-group" class="form-group">
+                    <label><strong class="translatable" data-i18n="arrival.landedPassengers">Landed passengers</strong>: <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="restricted-amount" name="restricted-amount" step="0.01" min="0">
+                </div>
+                <div id="restricted-first-travel-group" class="form-group mta-hidden">
+                    <label><strong class="translatable" data-i18n="arrival.firstTravelTo">First Travel To</strong>:</label>
+                    <select class="form-control" id="restricted-first-travel-to" name="restricted-first-travel-to">
+                        <option value="" class="translatable" data-i18n="arrival.selectFirstTravel">None (optional)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="arrival-cargo-block" class="form-group mta-hidden">
+                <button type="button" class="btn btn-outline-secondary btn-sm translatable" id="arrival-add-cargo-item" data-i18n="arrival.addCargoItem">+ Add cargo (optional)</button>
+                <div id="arrival-cargo-panel" class="mta-hidden mt-2">
+                    <div id="arrival-cargo-rows" class="mb-2"></div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm translatable" id="arrival-add-cargo-row-btn" data-i18n="arrival.addCargoRow">+ Add cargo</button>
+                </div>
+            </div>
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary translatable" data-i18n="registerArrivalShort">Create Arrival</button>
+                <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('register-arrival-popup')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Unified Flight Creation Form (3-mode selector) -->
+<div id="flight-form-modal" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5 class="translatable" data-i18n="createFlight">Create Flight</h5>
+        <form id="flight-form">
+            <!-- Travel Mode Selector (3 options) -->
+            <div class="form-group">
+                <div class="custom-control custom-radio mb-3">
+                    <input type="radio" class="custom-control-input" id="travel-mode-tickets" name="travel-mode" value="tickets" checked>
+                    <label class="custom-control-label translatable" data-i18n="departure.option.tickets" for="travel-mode-tickets">
+                        I've got tickets
+                    </label>
+                </div>
+                <div class="custom-control custom-radio mb-3">
+                    <input type="radio" class="custom-control-input" id="travel-mode-tab" name="travel-mode" value="tab">
+                    <label class="custom-control-label translatable" data-i18n="departure.option.tab" for="travel-mode-tab">
+                        Put it on my tab
+                    </label>
+                </div>
+                <div class="custom-control custom-radio mb-3">
+                    <input type="radio" class="custom-control-input" id="travel-mode-reserve" name="travel-mode" value="reserve">
+                    <label class="custom-control-label translatable" data-i18n="departure.option.reserve" for="travel-mode-reserve">
+                        Reserve for later
+                    </label>
+                </div>
+            </div>
+            <hr>
+
+            <!-- Mode 1: "I've got tickets" (Terminal-Funded) -->
+            <div id="mode-tickets-section" class="travel-mode-section">
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="departure.fromTerminal">From Terminal</strong>:</label>
+                    <select class="form-control" id="flight-form-origin-terminal" required>
+                        <option value="" class="translatable" data-i18n="departure.selectOriginTerminal">Select origin terminal...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Mode 2: "Put it on my tab" (Liability-Funded) -->
+            <div id="mode-tab-section" class="travel-mode-section mta-hidden">
+                <div class="form-group">
+                    <label><strong class="translatable" data-i18n="departure.selectOriginArrival">Select origin arrival</strong>:</label>
+                    <select class="form-control" id="flight-form-liability-group" required>
+                        <option value="" class="translatable" data-i18n="departure.selectOriginArrivalPlaceholder">Select origin arrival...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Mode 3: "Reserve for later" (Planned) -->
+            <!-- No additional fields for planned mode -->
+
+            <!-- Common Fields (visible for modes 1 & 2, destination-only for mode 3) -->
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="departure.toTerminal">To Terminal</strong>:</label>
+                <select class="form-control" id="flight-form-destination-terminal" required>
+                    <option value="" class="translatable" data-i18n="departure.selectDestinationTerminal">Select destination terminal...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="departure.descriptionOptional">Description (Optional)</strong>:</label>
+                <input type="text" class="form-control translatable-placeholder" id="flight-form-name" data-i18n-placeholder="departure.descriptionPlaceholder" placeholder="e.g., Water bill, Electricity, Groceries...">
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="amount">Amount</strong>:</label>
+                <input type="number" class="form-control" id="flight-form-amount" step="0.01" required>
+            </div>
+            <div id="ordinal-field-group" class="form-group">
+                <label><strong class="translatable" data-i18n="departure.ordinal">Order</strong>:</label>
+                <input type="number" class="form-control" id="flight-form-ordinal" min="0" step="1">
+            </div>
+            <div id="date-field-group" class="form-group">
+                <label><strong class="translatable" data-i18n="date">Date</strong>:</label>
+                <input type="date" class="form-control" id="flight-form-date" required>
+            </div>
+
+            <!-- Hidden field for passenger group (auto-populated in tickets mode) -->
+            <input type="hidden" id="flight-form-edit-id" value="">
+            <input type="hidden" id="flight-form-passenger-group" value="">
+
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary translatable" data-i18n="createFlight">Create Flight</button>
+                <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closeFlightForm()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Flight Mode 3: Leg to Destination Form -->
+<div id="flight-leg-dest-form-modal" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5>Add Leg: Payment to Destination</h5>
+        <p class="text-muted">Execute payment for a planned flight</p>
+        <hr>
+        <form id="flight-leg-dest-form">
+            <div class="form-group">
+                <label><strong>Description (Optional):</strong></label>
+                <input type="text" class="form-control" id="leg-dest-name" placeholder="e.g., Payment installment, Partial payment...">
+            </div>
+            <div class="form-group">
+                <label><strong>From Terminal:</strong></label>
+                <select class="form-control" id="leg-dest-origin-terminal" required>
+                    <option value="">Select origin terminal...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><strong>To Terminal (Destination):</strong></label>
+                <input type="text" class="form-control" id="leg-dest-terminal-display" disabled>
+                <small class="text-muted">Automatically set to the parent flight's destination</small>
+            </div>
+            <div class="form-group">
+                <label><strong>Payment Amount:</strong></label>
+                <input type="number" class="form-control" id="leg-dest-amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label><strong>Date:</strong></label>
+                <input type="date" class="form-control" id="leg-dest-date" required>
+            </div>
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary">Create Payment Leg</button>
+                <button type="button" class="btn btn-secondary" onclick="closeLegDestModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Flight Mode 4: Leg Return Form -->
+<div id="flight-leg-return-form-modal" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5>Add Leg: Return Flight</h5>
+        <p class="text-muted">Return money from an expense terminal</p>
+        <hr>
+        <form id="flight-leg-return-form">
+            <div class="form-group">
+                <label><strong>Description (Optional):</strong></label>
+                <input type="text" class="form-control" id="leg-return-name" placeholder="e.g., Return, Refund...">
+            </div>
+            <div class="form-group">
+                <label><strong>From Expense Terminal:</strong></label>
+                <input type="text" class="form-control" id="leg-return-origin-display" disabled>
+                <small class="text-muted">Automatically set to Expense</small>
+            </div>
+            <div class="form-group">
+                <label><strong>To Terminal:</strong></label>
+                <select class="form-control" id="leg-return-destination-terminal" required>
+                    <option value="">Select where money returns...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><strong>Return Amount:</strong></label>
+                <input type="number" class="form-control" id="leg-return-amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label><strong>Date:</strong></label>
+                <input type="date" class="form-control" id="leg-return-date" required>
+            </div>
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary">Create Return Flight</button>
+                <button type="button" class="btn btn-secondary" onclick="closeLegReturnModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Legacy passenger-form (kept for backward compatibility) -->
+<div id="create-passenger-popup" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5>Create Flight</h5>
+        <p class="text-muted">Allocate money from a group or plan an expense</p>
+        <hr>
+        <form id="passenger-form">
+            <div class="form-group">
+                <label><strong>From Passenger Group:</strong></label>
+                <select class="form-control" id="passenger-group">
+                    <option value="">Select group (or leave empty for planned expense)...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><strong>Amount:</strong></label>
+                <input type="number" class="form-control" id="passenger-amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label><strong>Origin Terminal (optional):</strong></label>
+                <select class="form-control" id="flight-origin">
+                    <option value="">Select origin...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><strong>Destination Terminal:</strong></label>
+                <select class="form-control" id="passenger-destination">
+                    <option value="">Select destination...</option>
+                </select>
+            </div>
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary">Create Flight</button>
+                <button type="button" class="btn btn-secondary" onclick="closePopup('create-passenger-popup')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="create-airport-popup" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5 id="airport-modal-title">Create New Airport</h5>
+        <p class="text-muted">Define a new airport category</p>
+        <hr>
+        <form id="airport-form">
+            <input type="hidden" id="airport-edit-id">
+            <div class="form-group">
+                <label><strong>Airport Name:</strong></label>
+                <input type="text" class="form-control" id="airport-name" placeholder="e.g., Income, Savings" required>
+            </div>
+            <div class="form-group">
+                <label><strong>Airport Type:</strong></label>
+                <select class="form-control" id="airport-type" required>
+                    <option value="standard">Standard</option>
+                    <option value="credit">Credit</option>
+                </select>
+            </div>
+            <div class="form-group mta-hidden" id="airport-status-group">
+                <label><strong>Status:</strong></label>
+                <select class="form-control" id="airport-status">
+                    <option value="active">active</option>
+                    <option value="inactive">inactive</option>
+                </select>
+            </div>
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary" id="airport-submit-btn">Save</button>
+                <button type="button" class="btn btn-secondary" onclick="closePopup('create-airport-popup')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="create-terminal-popup" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5 id="terminal-modal-title">&#128682; Create New Terminal</h5>
+        <p class="text-muted">Add a terminal to an existing airport</p>
+        <hr>
+        <form id="terminal-form">
+            <input type="hidden" id="terminal-edit-id">
+            <div class="form-group">
+                <label><strong>Airport:</strong></label>
+                <select class="form-control" id="terminal-airport" required>
+                    <option value="">Select airport...</option>
+                </select>
+            </div>
+            <div class="alert alert-info mta-hidden" id="terminal-credit-airport-message">
+                Credit airports manage their terminals automatically.
+            </div>
+            <div class="form-group">
+                <label><strong>Terminal Name:</strong></label>
+                <input type="text" class="form-control" id="terminal-name" placeholder="e.g., Salary, Rent" required>
+            </div>
+            <div class="form-group">
+                <label><strong>Terminal Alias:</strong></label>
+                <input type="text" class="form-control" id="terminal-code" placeholder="e.g., SAL, RENT, SAV" required>
+            </div>
+            <div class="form-group">
+                <label><strong>Terminal Type:</strong></label>
+                <select class="form-control" id="terminal-type" required>
+                    <option value="">Select type...</option>
+                    <option value="Income">Income (where money arrives)</option>
+                    <option value="Transit">Transit (temporary storage)</option>
+                    <option value="Expense">Expense (final destinations)</option>
+                </select>
+            </div>
+            <div class="form-group mta-hidden" id="terminal-returnable-group">
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="terminal-returnable">
+                    <label class="custom-control-label" for="terminal-returnable">
+                        <strong>Returnable</strong> <small class="text-muted">(Can withdraw money later - for Savings, Investments, etc.)</small>
+                    </label>
+                </div>
+            </div>
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary" id="terminal-submit-btn">Save</button>
+                <button type="button" class="btn btn-secondary" onclick="closePopup('create-terminal-popup')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="create-product-popup" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5 id="product-modal-title" class="translatable" data-i18n="productManager">Products</h5>
+        <p class="text-muted translatable" data-i18n="ui.products.modalHint">Manage the products used in arrival cargo composition.</p>
+        <hr>
+        <form id="product-form">
+            <input type="hidden" id="product-edit-id">
+            <input type="hidden" id="product-view-mode" value="edit">
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="productCode">Product code</strong>:</label>
+                <input type="text" class="form-control" id="product-code" required maxlength="24">
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="productName">Product name</strong>:</label>
+                <input type="text" class="form-control" id="product-name" required>
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="defaultUnitPrice">Default unit price</strong>:</label>
+                <input type="number" class="form-control" id="product-default-unit-price" step="0.01" min="0" required>
+            </div>
+            <div id="product-form-actions" class="mta-tools-button-row mb-3">
+                <button type="submit" class="btn btn-primary translatable" id="product-submit-btn" data-i18n="save">Save</button>
+                <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('create-product-popup')">Cancel</button>
+            </div>
+            <div id="product-read-actions" class="mta-tools-button-row mb-3 mta-hidden">
+                <button type="button" class="btn btn-primary translatable" id="product-read-edit-btn" data-i18n="edit">Edit</button>
+                <button type="button" class="btn btn-danger translatable" id="product-read-delete-btn" data-i18n="delete">Delete</button>
+                <button type="button" class="btn btn-secondary translatable" data-i18n="close" onclick="closePopup('create-product-popup')">Close</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Return ticket popup -->
+<div id="buy-return-ticket-popup" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5>&#8617; Buy Return Ticket</h5>
+        <p class="text-muted">Withdraw money from <strong id="return-terminal-name"></strong></p>
+        <p class="small">Available balance: <strong id="return-terminal-balance"></strong></p>
+        <hr>
+        <form id="return-ticket-form">
+            <input type="hidden" id="return-terminal-id">
+            
+            <div class="form-group">
+                <label><strong>Amount to Withdraw:</strong></label>
+                <input type="number" class="form-control" id="return-amount" step="0.01" min="0.01" placeholder="0.00" required>
+            </div>
+            
+                        <div class="form-group">
+                <label><strong>Destination Terminal (Income):</strong></label>
+                <select class="form-control" id="return-destination-terminal">
+                    <option value="">Select destination...</option>
+                </select>
+            </div>
+<div class="form-group">
+                <label><strong>Group Selection:</strong></label>
+                <div class="custom-control custom-radio">
+                    <input type="radio" class="custom-control-input" id="return-existing-group" name="group-option" value="existing" checked onchange="toggleReturnGroupFields()">
+                    <label class="custom-control-label" for="return-existing-group">Add to existing group</label>
+                </div>
+                <div class="custom-control custom-radio">
+                    <input type="radio" class="custom-control-input" id="return-new-group" name="group-option" value="new" onchange="toggleReturnGroupFields()">
+                    <label class="custom-control-label" for="return-new-group">Create new group</label>
+                </div>
+            </div>
+            
+            <div class="form-group" id="return-existing-group-field">
+                <label><strong>Select Group:</strong></label>
+                <select class="form-control" id="return-group-select">
+                    <option value="">Select group...</option>
+                </select>
+            </div>
+            
+            <div class="form-group mta-hidden" id="return-new-group-field">
+                <label><strong>New Group Name:</strong></label>
+                <input type="text" class="form-control" id="return-group-name" placeholder="e.g., Car Fund">
+            </div>
+            
+            <div class="mta-tools-button-row">
+                <button type="submit" class="btn btn-primary">&#8617; Buy Return Ticket</button>
+                <button type="button" class="btn btn-secondary" onclick="closePopup('buy-return-ticket-popup')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Leg Modal -->
+<div id="add-leg-modal" class="modal-popup mta-hidden">
+    <div class="modal-content">
+        <h5>Add Leg to Flight</h5>
+        <p class="text-muted">Choose how this leg will be handled</p>
+        <hr>
+        <div class="form-group">
+            <div class="custom-control custom-radio mb-3">
+                <input type="radio" class="custom-control-input" id="add-leg-to-destination" name="leg-type" value="toDestination" checked>
+                <label class="custom-control-label" for="add-leg-to-destination">
+                    <strong>To destination</strong>
+                    <small class="d-block text-muted">Create a payment leg to the destination terminal</small>
+                </label>
+            </div>
+            <div class="custom-control custom-radio mb-3">
+                <input type="radio" class="custom-control-input" id="add-leg-return" name="leg-type" value="return">
+                <label class="custom-control-label" for="add-leg-return">
+                    <strong>Return flight</strong>
+                    <small class="d-block text-muted">Create a return leg from the destination back to source</small>
+                </label>
+            </div>
+        </div>
+        <hr>
+        <div class="mta-tools-button-row">
+            <button type="button" class="btn btn-primary" onclick="submitAddLeg()">Continue</button>
+            <button type="button" class="btn btn-secondary" onclick="closeAddLegModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Details modal -->
+<div id="details" class="mta-hidden"></div>
+<div onclick="closeDetails()" id="overlay" class="mta-hidden"></div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<!-- Load app scripts (cache-bust on file://) -->
+<script type="module">
+    import { t, i18n } from './scripts/mta-i18n.js';
+    window.t = t;
+    window.i18n = i18n;
+</script>
+<script>
+    (function(){
+        try{
+            var bust = (location.protocol === 'file:') ? ('?v=' + Date.now()) : '';
+            function loadScript(src, cb){
+                var s = document.createElement('script');
+                s.src = src + bust;
+                s.async = false;
+                s.onload = function(){ if(cb) cb(); };
+                document.body.appendChild(s);
+            }
+            // load sequentially to preserve execution order
+            loadScript('scripts/mta-utils.js', function(){ loadScript('scripts/mta-data-model.js', function(){ loadScript('scripts/mta-data-store.js', function(){ loadScript('scripts/mta-business.js', function(){ loadScript('scripts/mta-ui.js', function(){ loadScript('scripts/mta-events.js'); }); }); }); }); });
+        }catch(e){
+            var s1 = document.createElement('script'); s1.src = 'scripts/mta-utils.js'; document.body.appendChild(s1);
+            var s2 = document.createElement('script'); s2.src = 'scripts/mta-data-model.js'; document.body.appendChild(s2);
+            var s3 = document.createElement('script'); s3.src = 'scripts/mta-data-store.js'; document.body.appendChild(s3);
+            var s4 = document.createElement('script'); s4.src = 'scripts/mta-business.js'; document.body.appendChild(s4);
+            var s5 = document.createElement('script'); s5.src = 'scripts/mta-ui.js'; document.body.appendChild(s5);
+            var s6 = document.createElement('script'); s6.src = 'scripts/mta-events.js'; document.body.appendChild(s6);
+        }
+    })();
+</script>
+<script>
+// Wrap existing update functions to apply sort order based on checkboxes
+(function(){
+    function sortList(containerSelector, byName){
+        var container = document.querySelector(containerSelector);
+        if(!container) return;
+        var items = Array.from(container.children);
+        if(items.length === 0) return;
+        items.sort(function(a,b){
+            var nameAEl = a.querySelector('.item-name, .list-item-title');
+            var nameBEl = b.querySelector('.item-name, .list-item-title');
+            var nameA = nameAEl ? nameAEl.textContent.trim().toLowerCase() : (a.textContent||'').trim().toLowerCase();
+            var nameB = nameBEl ? nameBEl.textContent.trim().toLowerCase() : (b.textContent||'').trim().toLowerCase();
+            if(byName){
+                return nameA.localeCompare(nameB);
+            }
+            var amountAEl = a.querySelector('.item-amount, .amount');
+            var amountBEl = b.querySelector('.item-amount, .amount');
+            var amtA = amountAEl ? parseFloat((amountAEl.textContent||'').replace(/[^0-9\.-]+/g,''))||0 : 0;
+            var amtB = amountBEl ? parseFloat((amountBEl.textContent||'').replace(/[^0-9\.-]+/g,''))||0 : 0;
+            return amtB - amtA;
+        });
+        items.forEach(function(it){ container.appendChild(it); });
+    }
+
+    var origTerminals = window.updateTerminalsList;
+    window.updateTerminalsList = function(){
+        if(typeof origTerminals === 'function') origTerminals();
+        var cb = document.getElementById('sort-by-name-terminals');
+        sortList('#terminals-list', cb && cb.checked);
+    };
+
+    document.addEventListener('change', function(e){
+        if(!e || !e.target) return;
+        if(e.target.id === 'sort-by-name-terminals') updateTerminalsList();
+    });
+})();
+</script>
+<script>
+// Debug toggle: add ?debug=1 to URL to show left/right markers.
+// Add ?nudge=1 to apply a 1px right padding nudge to `.page` for parity testing.
+(function(){
+    try{
+        var qs = window.location.search;
+        var page = document.querySelector('.page');
+        if(!page) return;
+        if(qs.indexOf('debug=1') !== -1) page.classList.add('debug-outline');
+        if(qs.indexOf('nudge=1') !== -1) page.classList.add('nudge-right');
+    }catch(e){/* no-op */}
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
