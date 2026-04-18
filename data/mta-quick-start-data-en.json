@@ -128,64 +128,15 @@
                                 "creditAirportId":  "APT-YOUR-CREDIT",
                                 "extendable":  true,
                                 "createdAt":  "2026-01-01T12:00:00.000Z"
-                            },
-                            {
-                                "id":  "PG-STARTER-SALES",
-                                "name":  "Starter Sales",
-                                "type":  "external",
-                                "totalAmount":  85,
-                                "creditAirportId":  null,
-                                "extendable":  false,
-                                "cargo":  [
-                                              {
-                                                  "productId":  "MTA01-P000001",
-                                                  "quantity":  3,
-                                                  "unitPrice":  20,
-                                                  "amount":  60
-                                              },
-                                              {
-                                                  "productId":  "MTA01-P000002",
-                                                  "quantity":  1,
-                                                  "unitPrice":  25,
-                                                  "amount":  25
-                                              }
-                                          ],
-                                "createdAt":  "2026-01-05T09:00:00.000Z"
                             }
                         ],
     "flights":  [
-                    {
-                        "id":  "MTA01-F000001",
-                        "name":  "Arrival: Starter Sales",
-                        "passengerGroupId":  "PG-STARTER-SALES",
-                        "originTerminalId":  null,
-                        "destinationTerminalId":  "TERM-YOUR-SALARY",
-                        "amount":  85,
-                        "status":  "Completed",
-                        "date":  "2026-01-05T00:00:00.000Z",
-                        "ordinal":  0,
-                        "createdAt":  "2026-01-05T09:00:00.000Z",
-                        "sourceFlightId":  null
-                    },
-                    {
-                        "id":  "MTA01-F000002",
-                        "name":  "Connection: Starter Sales",
-                        "passengerGroupId":  "PG-STARTER-SALES",
-                        "originTerminalId":  "TERM-YOUR-SALARY",
-                        "destinationTerminalId":  "TERM-YOUR-CHECKING",
-                        "amount":  85,
-                        "status":  "Completed",
-                        "date":  "2026-01-05T00:00:00.000Z",
-                        "ordinal":  1,
-                        "createdAt":  "2026-01-05T09:01:00.000Z",
-                        "sourceFlightId":  null
-                    }
                 ],
     "products":  [
                      {
                          "id":  "MTA01-P000001",
                          "name":  "Your Star Product",
-                         "defaultUnitPrice":  20,
+                         "defaultUnitPrice":  0,
                          "status":  "active",
                          "createdAt":  "2026-01-01T00:00:00.000Z",
                          "code":  "STAR"
@@ -193,7 +144,7 @@
                      {
                          "id":  "MTA01-P000002",
                          "name":  "Another Product",
-                         "defaultUnitPrice":  25,
+                         "defaultUnitPrice":  0,
                          "status":  "active",
                          "createdAt":  "2026-01-01T00:00:00.000Z",
                          "code":  "OTHER"
