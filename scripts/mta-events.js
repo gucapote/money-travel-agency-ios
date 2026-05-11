@@ -582,7 +582,7 @@
 
                     if (editId) {
                         updateAirport(editId, { name, status });
-                        showMessage('Airport updated successfully');
+                        showMessage(t('ui.messages.airportSaved'));
                     } else {
                         createAirport(name, type);
                         showMessage(t("airportCreatedSuccessfully"));
@@ -613,19 +613,19 @@
                     const rawReturnable = !!returnableCheckbox?.checked;
 
                     if (selectedAirport && selectedAirport.type === 'credit') {
-                        showMessage('Credit airports manage their terminals automatically.', 'error');
+                        showMessage(t('ui.messages.creditAirportManagesTerminals'), 'error');
                         return;
                     }
 
                     if (type !== 'Expense' && rawReturnable) {
-                        showMessage('Only Expense terminals can be returnable', 'error');
+                        showMessage(t('ui.messages.onlyExpenseTerminalsReturnable'), 'error');
                         return;
                     }
                     const returnable = type === 'Expense' ? rawReturnable : false;
 
                     if (editId) {
                         updateTerminal(editId, { name, alias, returnable });
-                        showMessage('Terminal updated successfully');
+                        showMessage(t('ui.messages.terminalSaved'));
                     } else {
                         createTerminal(airportId, name, alias, returnable, type);
                         showMessage(t("terminalCreatedSuccessfully"));
@@ -758,18 +758,102 @@
             }
         });
 
-        // Export JSON to clipboard
+        const buildBackupFilename = () => {
+            const now = new Date();
+            const pad = value => String(value).padStart(2, '0');
+            const stamp = [
+                now.getFullYear(),
+                pad(now.getMonth() + 1),
+                pad(now.getDate())
+            ].join('-');
+            return `mta-backup-${stamp}.json`;
+        };
+
+        const copyBackupToClipboard = async (json) => {
+            if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+                throw new Error('Clipboard is not available');
+            }
+            await navigator.clipboard.writeText(json);
+        };
+
+        const downloadBackupJson = (filename, json) => {
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
+
+        const shareBackupWithWebApi = async (filename, json) => {
+            if (!navigator.share) return false;
+
+            const file = new File([json], filename, { type: 'application/json' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: 'MTA backup',
+                    text: 'Money Travel Agency backup',
+                    files: [file]
+                });
+                return true;
+            }
+
+            await navigator.share({
+                title: 'MTA backup',
+                text: json
+            });
+            return true;
+        };
+
+        const exportBackupJson = async () => {
+            const data = getAllData();
+            const json = JSON.stringify(data, null, 2);
+            const filename = buildBackupFilename();
+
+            if (window.AndroidBackup && typeof window.AndroidBackup.shareJsonBackup === 'function') {
+                window.AndroidBackup.shareJsonBackup(filename, json);
+                showMessage(t('ui.messages.backupShareOpened'));
+                return;
+            }
+
+            try {
+                const shared = await shareBackupWithWebApi(filename, json);
+                if (shared) {
+                    showMessage(t('ui.messages.backupShareOpened'));
+                    return;
+                }
+            } catch (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+            }
+
+            try {
+                downloadBackupJson(filename, json);
+                showMessage(t('ui.messages.backupDownloaded'));
+                return;
+            } catch (downloadError) {
+                try {
+                    await copyBackupToClipboard(json);
+                    showMessage(t('ui.messages.backupCopied').replace('{count}', json.length.toLocaleString()));
+                    return;
+                } catch (clipboardError) {
+                    showMessage(`${t('ui.messages.backupExportFailed')}: ${clipboardError.message}`, 'error');
+                }
+            }
+        };
+
+        // Export backup as share/download/copy fallback
         const exportBtn = document.getElementById('export-json');
         if (exportBtn) {
-            exportBtn.addEventListener('click', async () => {
-                try {
-                    const data = getAllData();
-                    const json = JSON.stringify(data, null, 2);
-                    await navigator.clipboard.writeText(json);
-                    showMessage(`JSON copied to clipboard. (${json.length.toLocaleString()} characters)`);
-                } catch (error) {
-                    showMessage('Error copying to clipboard: ' + error.message, 'error');
-                }
+            exportBtn.addEventListener('click', () => {
+                exportBackupJson().catch(error => {
+                    showMessage(`${t('ui.messages.backupExportFailed')}: ${error.message}`, 'error');
+                });
             });
         }
 

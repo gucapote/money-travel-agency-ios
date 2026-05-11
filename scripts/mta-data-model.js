@@ -719,6 +719,24 @@ const calculateOneWayTravelers = (allTerminals, allFlights) => {
 };
 
 /**
+ * Calculate Returned Travelers (Control Tower Metric).
+ * Completed flights that originate from returnable Expense terminals
+ * and therefore restore money to internal availability.
+ */
+const calculateReturnedTravelers = (allTerminals, allFlights) => {
+    const returnableExpenseTerminalIds = new Set(
+        allTerminals
+            .filter(t => t.type === 'Expense' && t.returnable === true)
+            .map(t => t.id)
+    );
+
+    return allFlights
+        .filter(f => f.status === 'Completed')
+        .filter(f => returnableExpenseTerminalIds.has(f.originTerminalId))
+        .reduce((sum, f) => sum + (f.amount || 0), 0);
+};
+
+/**
  * Get Liability Commitment Metrics (Control Tower Metric v1).
  * For PassengerGroup.type = 'liability', derives:
  *   PaidAmount = Sum(Completed flights for this PG)

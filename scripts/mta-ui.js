@@ -620,7 +620,7 @@ window.showCreateAirportForm = () => {
     const statusSelect = document.getElementById('airport-status');
 
     if (form) form.reset();
-    if (title) title.textContent = 'Create New Airport';
+    if (title) title.textContent = t('newAirport') || 'New Airport';
     if (submitBtn) submitBtn.textContent = t('save') || 'Save';
     if (editId) editId.value = '';
     if (nameInput) nameInput.disabled = false;
@@ -714,7 +714,7 @@ window.showCreateTerminalForm = () => {
     const nameInput = document.getElementById('terminal-name');
     const aliasInput = document.getElementById('terminal-code');
     const returnableCheckbox = document.getElementById('terminal-returnable');
-    if (title) title.innerHTML = '&#128682; Create New Terminal';
+    if (title) title.innerHTML = `&#128682; ${t('newTerminal') || 'New Terminal'}`;
     if (submitBtn) submitBtn.textContent = t('save') || 'Save';
     if (editId) editId.value = '';
     if (select) select.disabled = false;
@@ -1252,6 +1252,11 @@ const getFlightTypeLabel = (flight, flights, terminals) => {
 };
 
 const getRootFlightTypeLabel = (flight, flights, terminals) => {
+    const destTerminal = terminals.find(t => t.id === flight.destinationTerminalId);
+    if (destTerminal && destTerminal.type === 'Expense' && destTerminal.returnable) {
+        return t('roundtripLabel') || 'Roundtrip';
+    }
+
     const hasReturnChild = flights.some(f =>
         f.sourceFlightId === flight.id && isReturnFlight(f, terminals)
     );
@@ -1272,6 +1277,11 @@ const getDepartureRootPresentation = (flight, flights, terminals) => {
         return { color: 'green', label: t('arrivalFlightLabel') || 'Arrival' };
     }
 
+    const destTerminal = terminals.find(t => t.id === flight.destinationTerminalId);
+    if (destTerminal && destTerminal.type === 'Expense' && destTerminal.returnable) {
+        return { color: 'orange', label: t('roundtripLabel') || 'Roundtrip' };
+    }
+
     const hasReturnChild = flights.some(f =>
         f.sourceFlightId === flight.id && isReturnFlight(f, terminals)
     );
@@ -1279,7 +1289,6 @@ const getDepartureRootPresentation = (flight, flights, terminals) => {
         return { color: 'orange', label: t('roundtripLabel') || 'Roundtrip' };
     }
 
-    const destTerminal = terminals.find(t => t.id === flight.destinationTerminalId);
     if (destTerminal && destTerminal.type === 'Transit') {
         return { color: 'yellow', label: t('departureRootOneWayConnection') || 'One-way (Connection)' };
     }
@@ -1339,9 +1348,7 @@ const updateDashboard = () => {
     if (!flightBoard) return;
 
     // Get metrics
-    const groups = getPassengerGroups();
-    const flights = getFlights();
-    const terminals = getTerminals();
+    const { groups, terminals, filteredFlights, filteredGroups } = getDashboardMetricsSnapshot();
 
     // Build summary blocks
     const blocks = [];
@@ -1359,7 +1366,7 @@ const updateDashboard = () => {
     `;
 
     // 1. Total Arrivals
-    const totalArrivals = groups.reduce((sum, group) => sum + (Number(group.totalAmount) || 0), 0);
+    const totalArrivals = filteredGroups.reduce((sum, group) => sum + (Number(group.totalAmount) || 0), 0);
     blocks.push(`
         <div class="control-tower-block">
             <div class="block-header">${renderMetricHeader("totalArrivals", "ui.help.totalArrivals")}</div>
@@ -1369,8 +1376,8 @@ const updateDashboard = () => {
 
     // 2. Waiting Passengers
     const waitingTotal = (typeof calculateWaitingPassengers === 'function')
-        ? calculateWaitingPassengers(terminals, flights)
-        : getWaitingPassengers().reduce((sum, g) => sum + (Number(g.remaining) || 0), 0);
+        ? calculateWaitingPassengers(terminals, filteredFlights)
+        : 0;
     blocks.push(`
         <div class="control-tower-block">
             <div class="block-header">${renderMetricHeader("waitingPassengers", "ui.help.waitingPassengers")}</div>
@@ -1380,7 +1387,7 @@ const updateDashboard = () => {
 
     // 3. One-way Travelers
     const oneWayTotal = (typeof calculateOneWayTravelers === 'function')
-        ? calculateOneWayTravelers(terminals, flights)
+        ? calculateOneWayTravelers(terminals, filteredFlights)
         : getOneWayTravelersTotal();
     blocks.push(`
         <div class="control-tower-block">
@@ -1391,7 +1398,7 @@ const updateDashboard = () => {
 
     // 4. Roundtrip Travelers
     const roundtripTotal = (typeof calculateRoundtripTravelers === 'function')
-        ? calculateRoundtripTravelers(terminals, flights)
+        ? calculateRoundtripTravelers(terminals, filteredFlights)
         : getAssetsTotal();
     blocks.push(`
         <div class="control-tower-block">
@@ -1400,12 +1407,23 @@ const updateDashboard = () => {
         </div>
     `);
 
-    // 5. Reservations = sum of PendingCommitment across Planned flights
+    // 5. Returned Travelers
+    const returnedTotal = (typeof calculateReturnedTravelers === 'function')
+        ? calculateReturnedTravelers(terminals, filteredFlights)
+        : 0;
+    blocks.push(`
+        <div class="control-tower-block">
+            <div class="block-header">${renderMetricHeader("returnedTravelers", "ui.help.returnedTravelers")}</div>
+            <div class="block-amount">${formatCurrency(returnedTotal)}</div>
+        </div>
+    `);
+
+    // 6. Reservations = sum of PendingCommitment across Planned flights
     const reservationsTotal = (typeof calculatePlannedSpending === 'function')
-        ? calculatePlannedSpending(groups, flights)
-        : flights
+        ? calculatePlannedSpending(groups, filteredFlights)
+        : filteredFlights
             .filter(f => f.status === 'Planned')
-            .reduce((sum, f) => sum + calculatePendingCommitment(f, flights), 0);
+            .reduce((sum, f) => sum + calculatePendingCommitment(f, filteredFlights), 0);
     blocks.push(`
         <div class="control-tower-block">
             <div class="block-header">${renderMetricHeader("reservationsLabel", "ui.help.reservations")}</div>
@@ -2282,6 +2300,7 @@ const viewState = {
     departureSemaphoreFilter: 'all',
     terminalTypeFilter: 'all',
     airportTypeFilter: 'all',
+    dashboardPeriodFilter: 'all',
     ledgerMode: false,
     salesMode: false,
     deleteEnabledMode: false,
@@ -2375,6 +2394,7 @@ const applyCurrentUIPreferences = () => {
     }
 
     const arrivalsTypeFilter = document.getElementById('arrivals-type-filter');
+    const dashboardPeriodFilter = document.getElementById('dashboard-period-filter');
     const arrivalsCargoFilter = document.getElementById('arrivals-cargo-filter');
     const arrivalsCargoViewSelect = document.getElementById('arrivals-cargo-view-select');
     const arrivalsViewSeparator = document.getElementById('arrivals-view-separator');
@@ -2399,7 +2419,12 @@ const applyCurrentUIPreferences = () => {
         arrivalsTypeFilter.classList.toggle('mta-hidden', viewState.arrivals !== 'arrivals-groups');
     }
     if (arrivalsGroupToggleWrap) {
-        arrivalsGroupToggleWrap.classList.toggle('mta-hidden', viewState.arrivals !== 'arrivals-groups');
+        arrivalsGroupToggleWrap.classList.toggle('mta-hidden', !viewState.salesMode || viewState.arrivals !== 'arrivals-groups');
+    }
+    if (dashboardPeriodFilter) {
+        dashboardPeriodFilter.querySelectorAll('.mta-filter-toggle-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-filter') === viewState.dashboardPeriodFilter);
+        });
     }
     if (arrivalsGroupToggle) {
         arrivalsGroupToggle.checked = viewState.groupArrivals === true;
@@ -2497,6 +2522,64 @@ window.persistCurrentUIPreferences = () => {
 };
 
 loadCurrentUIPreferences();
+
+const getDashboardMonthKeyFromDate = (value) => {
+    const businessDate = String(value || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(businessDate)) {
+        return '';
+    }
+    return businessDate.slice(0, 7);
+};
+
+const getDashboardMonthKeys = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const lastMonthDate = new Date(currentYear, currentMonth - 2, 1);
+    return {
+        currentMonth: `${currentYear}-${String(currentMonth).padStart(2, '0')}`,
+        lastMonth: `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`
+    };
+};
+
+const flightMatchesDashboardPeriod = (flight, period = viewState.dashboardPeriodFilter) => {
+    if (period === 'all') return true;
+    const monthKey = getDashboardMonthKeyFromDate(flight?.date || flight?.createdAt);
+    if (!monthKey) return false;
+    const { currentMonth, lastMonth } = getDashboardMonthKeys();
+    if (period === 'current-month') return monthKey === currentMonth;
+    if (period === 'last-month') return monthKey === lastMonth;
+    return true;
+};
+
+const getDashboardFilteredFlights = (flights, period = viewState.dashboardPeriodFilter) => {
+    if (period === 'all') return flights.slice();
+    return flights.filter(flight => flightMatchesDashboardPeriod(flight, period));
+};
+
+const getDashboardFilteredPassengerGroups = (groups, flights, terminals, period = viewState.dashboardPeriodFilter) => {
+    if (period === 'all') return groups.slice();
+    return groups.filter(group => {
+        const anchorFlight = getPassengerGroupArrivalAnchorFlight(group.id, flights, terminals);
+        return !!(anchorFlight && flightMatchesDashboardPeriod(anchorFlight, period));
+    });
+};
+
+const getDashboardMetricsSnapshot = () => {
+    const groups = getPassengerGroups();
+    const flights = getFlights();
+    const terminals = getTerminals();
+    const filteredFlights = getDashboardFilteredFlights(flights, viewState.dashboardPeriodFilter);
+    const filteredGroups = getDashboardFilteredPassengerGroups(groups, flights, terminals, viewState.dashboardPeriodFilter);
+
+    return {
+        groups,
+        flights,
+        terminals,
+        filteredFlights,
+        filteredGroups
+    };
+};
 
 const arrivalMatchesTypeFilter = (group) => {
     switch (viewState.arrivalTypeFilter) {
@@ -3578,6 +3661,15 @@ window.toggleGroupArrivals = (enabled) => {
     updateArrivalsTab();
 };
 
+window.setDashboardPeriodFilter = (filter) => {
+    if (!['all', 'current-month', 'last-month'].includes(filter)) {
+        return;
+    }
+    viewState.dashboardPeriodFilter = filter;
+    applyCurrentUIPreferences();
+    updateDashboard();
+};
+
 window.setDepartureViewFilter = (filter) => {
     if (!['all', 'reservations', 'completed', 'returned'].includes(filter)) {
         return;
@@ -3744,7 +3836,7 @@ const updateTerminalsList = () => {
                     <div class="mta-canonical-item__line2">
                         <div class="mta-canonical-item__meta text-muted small">
                             ${terminalSemaphoreMarkup}
-                            <span>${terminalLabel}</span> - <span>${t("flightsLabel")} (${terminalFlights.length})</span><div><span class="mta-details-link" style="cursor: pointer;" onclick="event.stopPropagation(); toggleItemExpansion('terminal', '${term.id}', this)">${t("whereNowLabel") || "Where are they now? v"}</span></div>
+                            <span>${terminalLabel}</span> - <span>${t("flightsLabel")} (${terminalFlights.length})</span><div><span class="mta-details-link" style="cursor: pointer;" onclick="event.stopPropagation(); toggleItemExpansion('terminal', '${term.id}', this)">${t("whereNowLabel") || "What traffic are we handling? v"}</span></div>
                         </div>
                         <div class="mta-canonical-item__actions">
                             <div>
@@ -5170,12 +5262,11 @@ const renderStatsSection = () => {
     const grid = document.createElement('div');
     grid.className = 'mta-stats-grid';
     
-    const allTerminals = getTerminals();
-    const allFlights = getFlights();
+    const { groups, terminals, filteredFlights } = getDashboardMetricsSnapshot();
     
     let waitingValue = 0;
     if (typeof calculateWaitingPassengers === 'function') {
-        waitingValue = calculateWaitingPassengers(allTerminals, allFlights);
+        waitingValue = calculateWaitingPassengers(terminals, filteredFlights);
     }
     grid.appendChild(createStatCard({
         title: 'ui.stats.waitingPassengers',
@@ -5184,20 +5275,9 @@ const renderStatsSection = () => {
         icon: '<'
     }));
     
-    let roundtripValue = 0;
-    if (typeof calculateRoundtripTravelers === 'function') {
-        roundtripValue = calculateRoundtripTravelers(allTerminals, allFlights);
-    }
-    grid.appendChild(createStatCard({
-        title: 'ui.stats.roundtripTravelers',
-        value: roundtripValue,
-        unit: 'currency',
-        icon: '^'
-    }));
-    
     let oneWayValue = 0;
     if (typeof calculateOneWayTravelers === 'function') {
-        oneWayValue = calculateOneWayTravelers(allTerminals, allFlights);
+        oneWayValue = calculateOneWayTravelers(terminals, filteredFlights);
     }
     grid.appendChild(createStatCard({
         title: 'ui.stats.oneWayTravelers',
@@ -5205,12 +5285,32 @@ const renderStatsSection = () => {
         unit: 'currency',
         icon: '>'
     }));
+
+    let roundtripValue = 0;
+    if (typeof calculateRoundtripTravelers === 'function') {
+        roundtripValue = calculateRoundtripTravelers(terminals, filteredFlights);
+    }
+    grid.appendChild(createStatCard({
+        title: 'ui.stats.roundtripTravelers',
+        value: roundtripValue,
+        unit: 'currency',
+        icon: '^'
+    }));
+
+    let returnedValue = 0;
+    if (typeof calculateReturnedTravelers === 'function') {
+        returnedValue = calculateReturnedTravelers(terminals, filteredFlights);
+    }
+    grid.appendChild(createStatCard({
+        title: 'ui.stats.returnedTravelers',
+        value: returnedValue,
+        unit: 'currency',
+        icon: '↺'
+    }));
     
     let confirmedValue = 0, scheduledValue = 0;
-    if (typeof calculateReservations === 'function') {
-        const reservations = calculateReservations(allTerminals, allFlights);
-        confirmedValue = reservations.confirmed || 0;
-        scheduledValue = reservations.scheduled || 0;
+    if (typeof calculatePlannedSpending === 'function') {
+        confirmedValue = calculatePlannedSpending(groups, filteredFlights);
     }
     const reservationCard = document.createElement('div');
     reservationCard.className = 'mta-stat-card';

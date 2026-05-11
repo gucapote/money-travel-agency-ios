@@ -112,6 +112,11 @@
                                     </div>
                                 </div>
                             </div>
+                            <div id="dashboard-period-filter" class="mta-filter-toggle-row mt-3">
+                                <button type="button" class="mta-filter-toggle-btn active translatable" data-filter="all" data-i18n="ui.dashboardFilter.all" onclick="setDashboardPeriodFilter('all')">All</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="current-month" data-i18n="ui.dashboardFilter.currentMonth" onclick="setDashboardPeriodFilter('current-month')">Current Month</button>
+                                <button type="button" class="mta-filter-toggle-btn translatable" data-filter="last-month" data-i18n="ui.dashboardFilter.lastMonth" onclick="setDashboardPeriodFilter('last-month')">Last Month</button>
+                            </div>
                             <div id="flight-board" class="mt-3"></div>
                         </div>
                     </div>
@@ -329,7 +334,7 @@
                             <h6 class="mt-3 translatable" data-i18n="ui.tools.dataManagement">Data Management</h6>
                             <div class="mta-tools-button-row">
                                 <button class="btn btn-success btn-sm translatable" id="import-json" data-i18n="ui.tools.importJson">&#128229; Import JSON</button>
-                                <button class="btn btn-info btn-sm translatable" id="export-json" data-i18n="ui.tools.exportJson">&#128203; Export JSON</button>
+                                <button class="btn btn-info btn-sm translatable" id="export-json" data-i18n="ui.tools.exportJson">&#128203; Export Backup</button>
                                 <button class="btn btn-warning btn-sm translatable" id="reset-example-data" data-i18n="ui.tools.resetTestData">&#128260; Test Data</button>
                             </div>
                             <input type="file" id="file-input" accept=".json" class="mta-hidden">
@@ -713,32 +718,32 @@
 
 <div id="create-airport-popup" class="modal-popup mta-hidden">
     <div class="modal-content">
-        <h5 id="airport-modal-title">Create New Airport</h5>
-        <p class="text-muted">Define a new airport category</p>
+        <h5 id="airport-modal-title" class="translatable" data-i18n="newAirport">Create New Airport</h5>
+        <p class="text-muted translatable" data-i18n="ui.airports.modalHint">Define a new airport category</p>
         <hr>
         <form id="airport-form">
             <input type="hidden" id="airport-edit-id">
             <div class="form-group">
-                <label><strong>Airport Name:</strong></label>
-                <input type="text" class="form-control" id="airport-name" placeholder="e.g., Income, Savings" required>
+                <label><strong class="translatable" data-i18n="ui.airports.name">Airport Name</strong>:</label>
+                <input type="text" class="form-control translatable-placeholder" id="airport-name" data-i18n-placeholder="ui.airports.namePlaceholder" placeholder="e.g., Income, Savings" required>
             </div>
             <div class="form-group">
-                <label><strong>Airport Type:</strong></label>
+                <label><strong class="translatable" data-i18n="ui.airports.type">Airport Type</strong>:</label>
                 <select class="form-control" id="airport-type" required>
-                    <option value="standard">Standard</option>
-                    <option value="credit">Credit</option>
+                    <option class="translatable" data-i18n="ui.airports.typeStandard" value="standard">Standard</option>
+                    <option class="translatable" data-i18n="ui.airports.typeCredit" value="credit">Credit</option>
                 </select>
             </div>
             <div class="form-group mta-hidden" id="airport-status-group">
-                <label><strong>Status:</strong></label>
+                <label><strong class="translatable" data-i18n="status">Status</strong>:</label>
                 <select class="form-control" id="airport-status">
-                    <option value="active">active</option>
-                    <option value="inactive">inactive</option>
+                    <option class="translatable" data-i18n="active" value="active">active</option>
+                    <option class="translatable" data-i18n="inactive" value="inactive">inactive</option>
                 </select>
             </div>
             <div class="mta-tools-button-row">
-                <button type="submit" class="btn btn-primary" id="airport-submit-btn">Save</button>
-                <button type="button" class="btn btn-secondary" onclick="closePopup('create-airport-popup')">Cancel</button>
+                <button type="submit" class="btn btn-primary translatable" id="airport-submit-btn" data-i18n="save">Save</button>
+                <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('create-airport-popup')">Cancel</button>
             </div>
         </form>
     </div>
@@ -746,48 +751,48 @@
 
 <div id="create-terminal-popup" class="modal-popup mta-hidden">
     <div class="modal-content">
-        <h5 id="terminal-modal-title">&#128682; Create New Terminal</h5>
-        <p class="text-muted">Add a terminal to an existing airport</p>
+        <h5 id="terminal-modal-title" class="translatable" data-icon="&#128682;" data-i18n="newTerminal">&#128682; Create New Terminal</h5>
+        <p class="text-muted translatable" data-i18n="ui.terminals.modalHint">Add a terminal to an existing airport</p>
         <hr>
         <form id="terminal-form">
             <input type="hidden" id="terminal-edit-id">
             <div class="form-group">
-                <label><strong>Airport:</strong></label>
+                <label><strong class="translatable" data-i18n="airport">Airport</strong>:</label>
                 <select class="form-control" id="terminal-airport" required>
-                    <option value="">Select airport...</option>
+                    <option class="translatable" data-i18n="selectAirport" value="">Select airport...</option>
                 </select>
             </div>
-            <div class="alert alert-info mta-hidden" id="terminal-credit-airport-message">
+            <div class="alert alert-info mta-hidden translatable" data-i18n="ui.messages.creditAirportManagesTerminals" id="terminal-credit-airport-message">
                 Credit airports manage their terminals automatically.
             </div>
             <div class="form-group">
-                <label><strong>Terminal Name:</strong></label>
-                <input type="text" class="form-control" id="terminal-name" placeholder="e.g., Salary, Rent" required>
+                <label><strong class="translatable" data-i18n="ui.terminals.name">Terminal Name</strong>:</label>
+                <input type="text" class="form-control translatable-placeholder" id="terminal-name" data-i18n-placeholder="ui.terminals.namePlaceholder" placeholder="e.g., Salary, Rent" required>
             </div>
             <div class="form-group">
-                <label><strong>Terminal Alias:</strong></label>
-                <input type="text" class="form-control" id="terminal-code" placeholder="e.g., SAL, RENT, SAV" required>
+                <label><strong class="translatable" data-i18n="ui.terminals.alias">Terminal Alias</strong>:</label>
+                <input type="text" class="form-control translatable-placeholder" id="terminal-code" data-i18n-placeholder="ui.terminals.aliasPlaceholder" placeholder="e.g., SAL, RENT, SAV" required>
             </div>
             <div class="form-group">
-                <label><strong>Terminal Type:</strong></label>
+                <label><strong class="translatable" data-i18n="ui.terminals.type">Terminal Type</strong>:</label>
                 <select class="form-control" id="terminal-type" required>
-                    <option value="">Select type...</option>
-                    <option value="Income">Income (where money arrives)</option>
-                    <option value="Transit">Transit (temporary storage)</option>
-                    <option value="Expense">Expense (final destinations)</option>
+                    <option class="translatable" data-i18n="selectType" value="">Select type...</option>
+                    <option class="translatable" data-i18n="ui.terminals.typeIncomeHint" value="Income">Income (where money arrives)</option>
+                    <option class="translatable" data-i18n="ui.terminals.typeTransitHint" value="Transit">Transit (temporary storage)</option>
+                    <option class="translatable" data-i18n="ui.terminals.typeExpenseHint" value="Expense">Expense (final destinations)</option>
                 </select>
             </div>
             <div class="form-group mta-hidden" id="terminal-returnable-group">
                 <div class="custom-control custom-checkbox">
                     <input type="checkbox" class="custom-control-input" id="terminal-returnable">
                     <label class="custom-control-label" for="terminal-returnable">
-                        <strong>Returnable</strong> <small class="text-muted">(Can withdraw money later - for Savings, Investments, etc.)</small>
+                        <strong class="translatable" data-i18n="returnable">Returnable</strong> <small class="text-muted translatable" data-i18n="ui.terminals.returnableHint">(Can withdraw money later - for Savings, Investments, etc.)</small>
                     </label>
                 </div>
             </div>
             <div class="mta-tools-button-row">
-                <button type="submit" class="btn btn-primary" id="terminal-submit-btn">Save</button>
-                <button type="button" class="btn btn-secondary" onclick="closePopup('create-terminal-popup')">Cancel</button>
+                <button type="submit" class="btn btn-primary translatable" id="terminal-submit-btn" data-i18n="save">Save</button>
+                <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('create-terminal-popup')">Cancel</button>
             </div>
         </form>
     </div>
