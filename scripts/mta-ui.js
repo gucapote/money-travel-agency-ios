@@ -7,6 +7,90 @@ if (window.__mta_ui_loaded) {
     window.__mta_ui_loaded = true;
 
 // ============================================================================
+// QUICK ARRIVAL LONG-PRESS HANDLER
+// ============================================================================
+// Detect long-press on product cards to remove one unit
+(() => {
+    let pressStartTime = null;
+    let pressStartX = null;
+    let pressStartY = null;
+    let isLongPress = false;
+    const LONG_PRESS_DURATION = 500; // milliseconds
+    const MOVE_THRESHOLD = 10; // pixels
+    
+    document.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('.mta-quick-product')) {
+            pressStartTime = Date.now();
+            pressStartX = event.clientX;
+            pressStartY = event.clientY;
+            isLongPress = false;
+        }
+    });
+    
+    document.addEventListener('pointermove', (event) => {
+        if (pressStartTime) {
+            const moveX = Math.abs(event.clientX - pressStartX);
+            const moveY = Math.abs(event.clientY - pressStartY);
+            if (moveX > MOVE_THRESHOLD || moveY > MOVE_THRESHOLD) {
+                pressStartTime = null;
+                isLongPress = false;
+            }
+        }
+    });
+    
+    document.addEventListener('pointerup', (event) => {
+        if (pressStartTime) {
+            const pressDuration = Date.now() - pressStartTime;
+            if (pressDuration >= LONG_PRESS_DURATION) {
+                const productButton = event.target.closest('.mta-quick-product');
+                if (productButton) {
+                    const productId = productButton.dataset.productId;
+                    if (productId) {
+                        isLongPress = true;
+                        removeQuickArrivalProduct(productId);
+                    }
+                }
+            }
+            pressStartTime = null;
+        }
+    });
+    
+    // Suppress click events that were long-presses
+    document.addEventListener('click', (event) => {
+        if (isLongPress && event.target.closest('.mta-quick-product')) {
+            event.preventDefault();
+            event.stopPropagation();
+            isLongPress = false;
+        }
+    }, true); // Use capture phase to intercept clicks early
+})();
+
+// ============================================================================
+// QUICK ARRIVAL TAB EVENT LISTENER - Recalculate warnings when tab is clicked
+// ============================================================================
+(() => {
+    // Use event delegation to catch tab clicks on Quick Arrival links
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href="#quick-arrival"][data-toggle="tab"]');
+        if (link) {
+            // Quick Arrival tab link was clicked, refresh UI after Bootstrap switches tabs
+            setTimeout(() => {
+                if (typeof window.updateQuickArrivalTab === 'function') {
+                    window.updateQuickArrivalTab();
+                }
+            }, 100);
+        }
+    });
+})();
+
+window.navigateToTools = () => {
+    const toolsLink = document.querySelector('a[href="#dev"][data-toggle="tab"]');
+    if (toolsLink) {
+        toolsLink.click();
+    }
+};
+
+// ============================================================================
 // POPUP CONTROL FUNCTIONS
 // ============================================================================
 const showPopup = (popupId) => {
@@ -360,8 +444,56 @@ const getProductOptionLabel = (product) => {
     return name && name !== code ? `${code} - ${name}` : code;
 };
 
+const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const getEntityNotes = (entity) => String(entity?.notes || '').trim();
+
+const renderNotesBlock = (entity) => {
+    const notes = getEntityNotes(entity);
+    if (!notes) return '';
+    return `<div class="form-group"><label class="text-muted small"><strong>${t('notes')}</strong></label><p>${escapeHtml(notes).replace(/\n/g, '<br>')}</p></div>`;
+};
+
+const getProductImageMarkup = (product, extraClass = '') => {
+    if (product?.imageDataUrl) {
+        return `<img class="${extraClass}" src="${product.imageDataUrl}" alt="${escapeHtml(product.name || product.code)}">`;
+    }
+    return `<div class="mta-product-image-fallback ${extraClass}" aria-hidden="true">${escapeHtml(getProductCodeLabel(product).slice(0, 2))}</div>`;
+};
+
+const updateProductImagePreview = (imageDataUrl = '') => {
+    const preview = document.getElementById('product-image-preview');
+    const hiddenInput = document.getElementById('product-image-data-url');
+    if (hiddenInput) hiddenInput.value = imageDataUrl || '';
+    if (!preview) return;
+    preview.innerHTML = imageDataUrl
+        ? `<img src="${imageDataUrl}" alt="${t('productImage')}">`
+        : `<span class="text-muted small">${t('productImage')}</span>`;
+};
+
+window.handleProductImageFile = (input) => {
+    const file = input?.files?.[0];
+    if (!file) {
+        return;
+    }
+    if (!file.type || !file.type.startsWith('image/')) {
+        showMessage(t('productImage'), 'error');
+        input.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = event => updateProductImagePreview(String(event.target?.result || ''));
+    reader.onerror = () => showMessage(t('productImage'), 'error');
+    reader.readAsDataURL(file);
+};
+
 const setProductFormReadOnly = (readOnly) => {
-    ['product-code', 'product-name', 'product-default-unit-price'].forEach(id => {
+    ['product-code', 'product-name', 'product-default-unit-price', 'product-image-file'].forEach(id => {
         const input = document.getElementById(id);
         if (input) input.disabled = readOnly;
     });
@@ -396,6 +528,7 @@ window.showProductManager = () => {
     const codeInput = document.getElementById('product-code');
     const nameInput = document.getElementById('product-name');
     const priceInput = document.getElementById('product-default-unit-price');
+    const imageFileInput = document.getElementById('product-image-file');
 
     if (form) form.reset();
     if (title) title.textContent = t('productManager');
@@ -405,6 +538,9 @@ window.showProductManager = () => {
     if (codeInput) codeInput.value = '';
     if (nameInput) nameInput.value = '';
     if (priceInput) priceInput.value = '0';
+    if (imageFileInput) imageFileInput.value = '';
+    updateProductImagePreview('');
+    setFormMetaNote('product-meta-note', null);
     setProductFormReadOnly(false);
     showPopup('create-product-popup');
 };
@@ -419,6 +555,7 @@ window.showProductDetails = (productId) => {
     const codeInput = document.getElementById('product-code');
     const nameInput = document.getElementById('product-name');
     const priceInput = document.getElementById('product-default-unit-price');
+    const imageFileInput = document.getElementById('product-image-file');
     const editBtn = document.getElementById('product-read-edit-btn');
     const deleteBtn = document.getElementById('product-read-delete-btn');
 
@@ -428,6 +565,9 @@ window.showProductDetails = (productId) => {
     if (codeInput) codeInput.value = product.code || '';
     if (nameInput) nameInput.value = product.name || '';
     if (priceInput) priceInput.value = String(product.defaultUnitPrice || 0);
+    if (imageFileInput) imageFileInput.value = '';
+    updateProductImagePreview(product.imageDataUrl || '');
+    setFormMetaNote('product-meta-note', product);
     if (editBtn) editBtn.onclick = () => window.showEditProductForm(product.id);
     if (deleteBtn) {
         deleteBtn.onclick = () => window.handleDeleteProduct(product.id, product.name);
@@ -448,6 +588,7 @@ window.showEditProductForm = (productId) => {
     const codeInput = document.getElementById('product-code');
     const nameInput = document.getElementById('product-name');
     const priceInput = document.getElementById('product-default-unit-price');
+    const imageFileInput = document.getElementById('product-image-file');
 
     if (title) title.textContent = `${t('edit')} ${t('productManager')}`;
     if (submitBtn) submitBtn.textContent = t('save');
@@ -456,6 +597,9 @@ window.showEditProductForm = (productId) => {
     if (codeInput) codeInput.value = product.code || '';
     if (nameInput) nameInput.value = product.name || '';
     if (priceInput) priceInput.value = String(product.defaultUnitPrice || 0);
+    if (imageFileInput) imageFileInput.value = '';
+    updateProductImagePreview(product.imageDataUrl || '');
+    setFormMetaNote('product-meta-note', product);
     setProductFormReadOnly(false);
     showPopup('create-product-popup');
 };
@@ -482,6 +626,195 @@ window.handleDeleteProduct = (productId, productName) => {
             : error.message;
         showMessage(message, 'error');
     }
+};
+
+const quickArrivalState = {
+    cargoByProductId: {}
+};
+
+const getTodayInputValue = () => {
+    const today = new Date();
+    return [
+        today.getFullYear(),
+        String(today.getMonth() + 1).padStart(2, '0'),
+        String(today.getDate()).padStart(2, '0')
+    ].join('-');
+};
+
+const getQuickArrivalCargoItems = () => Object.entries(quickArrivalState.cargoByProductId)
+    .map(([productId, quantity]) => {
+        const product = getProductById(productId);
+        if (!product || product.status === 'inactive' || quantity <= 0) {
+            return null;
+        }
+        const unitPrice = Number(product.defaultUnitPrice || 0);
+        return {
+            productId,
+            quantity,
+            unitPrice,
+            amount: Number((quantity * unitPrice).toFixed(2))
+        };
+    })
+    .filter(Boolean);
+
+const buildQuickArrivalName = (items = getQuickArrivalCargoItems()) => {
+    const parts = items.map(item => {
+        const product = getProductById(item.productId);
+        return `${item.quantity}x${getProductCodeLabel(product)}`;
+    });
+    return parts.join(', ');
+};
+
+const syncQuickArrivalSummary = () => {
+    const items = getQuickArrivalCargoItems();
+    const saveBtn = document.getElementById('quick-arrival-save');
+    const warningEl = document.getElementById('quick-arrival-warnings');
+    const total = Number(items.reduce((sum, item) => sum + item.amount, 0).toFixed(2));
+    const summary = items.map(item => {
+        const product = getProductById(item.productId);
+        return `${item.quantity}x${getProductCodeLabel(product)}`;
+    }).join(', ');
+
+    // Check for missing default values in Tools configuration
+    const warnings = [];
+    if (!viewState.defaultArrivalTerminalId) warnings.push(t('ui.quickArrival.defaultTerminalRequired'));
+    if (!viewState.defaultArrivalGroupName) warnings.push(t('ui.quickArrival.defaultGroupRequired'));
+
+    if (warningEl) {
+        if (warnings.length > 0) {
+            const warningsHtml = warnings.join('</li><li>');
+            const toolsLink = '<a style="text-decoration: underline; color: inherit; cursor: pointer;" onclick="window.navigateToTools()">Tools</a>';
+            warningEl.innerHTML = `<div class="alert alert-warning mb-3" role="alert"><strong>Warning:</strong><ul class="mb-0 mt-2"><li>${warningsHtml}</li><li>Go to ${toolsLink} to configure defaults.</li></ul></div>`;
+        } else {
+            warningEl.innerHTML = '';
+        }
+    }
+
+    if (saveBtn) {
+        const buttonText = summary 
+            ? `${t('ui.quickArrival.registerButton')} ${formatCurrency(total)}: ${summary}`
+            : `${t('ui.quickArrival.registerButton')} ${formatCurrency(total)}`;
+        saveBtn.textContent = buttonText;
+        saveBtn.disabled = items.length === 0 || total <= 0 || warnings.length > 0;
+    }
+    document.querySelectorAll('.mta-quick-product').forEach(tile => {
+        const productId = tile.getAttribute('data-product-id');
+        const qty = quickArrivalState.cargoByProductId[productId] || 0;
+        tile.classList.toggle('is-selected', qty > 0);
+        const badge = tile.querySelector('.mta-quick-product__badge');
+        if (badge) {
+            badge.textContent = qty > 0 ? String(qty) : '';
+            badge.classList.toggle('mta-hidden', qty <= 0);
+        }
+    });
+};
+
+window.addQuickArrivalProduct = (productId) => {
+    if (!window.isSalesModeEnabled()) return;
+    quickArrivalState.cargoByProductId[productId] = (quickArrivalState.cargoByProductId[productId] || 0) + 1;
+    syncQuickArrivalSummary();
+};
+
+window.removeQuickArrivalProduct = (productId) => {
+    const currentQuantity = quickArrivalState.cargoByProductId[productId] || 0;
+    if (currentQuantity <= 1) {
+        delete quickArrivalState.cargoByProductId[productId];
+    } else {
+        quickArrivalState.cargoByProductId[productId] = currentQuantity - 1;
+    }
+    syncQuickArrivalSummary();
+};
+
+window.clearQuickArrival = () => {
+    quickArrivalState.cargoByProductId = {};
+    syncQuickArrivalSummary();
+};
+
+window.saveQuickArrival = () => {
+    try {
+        const items = getQuickArrivalCargoItems();
+        const amount = Number(items.reduce((sum, item) => sum + item.amount, 0).toFixed(2));
+        const name = buildQuickArrivalName(items);
+        const landingDate = getTodayInputValue();
+        const landingTerminalId = viewState.defaultArrivalTerminalId || '';
+        const groupName = viewState.defaultArrivalGroupName || null;
+
+        if (!name) throw new Error(t('pleaseEnterGroupName'));
+        if (!landingTerminalId) throw new Error(t('ui.quickArrival.defaultTerminalRequired'));
+        if (items.length === 0 || amount <= 0) throw new Error(t('ui.quickArrival.noSelection'));
+
+        const landingTerminal = getTerminalById(landingTerminalId);
+        if (!landingTerminal || landingTerminal.type !== 'Income') {
+            throw new Error(t('ui.quickArrival.defaultTerminalRequired'));
+        }
+
+        const group = createPassengerGroup(name, amount, 'external', null, false, items, groupName);
+        createFlight(group.id, null, landingTerminalId, amount, 'Completed', `Arrival: ${name}`, landingDate);
+        window.clearQuickArrival();
+        showMessage(t('ui.quickArrival.saved'));
+        updateAll();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+};
+
+window.updateQuickArrivalTab = () => {
+    const container = document.getElementById('quick-arrival-content');
+    const langSelector = document.getElementById('quick-arrival-language-selector');
+    if (!container) return;
+
+    if (!window.isSalesModeEnabled()) {
+        container.innerHTML = '';
+        if (langSelector) langSelector.innerHTML = '';
+        return;
+    }
+
+    // Populate language selector in header
+    if (langSelector) {
+        const currentLang = window.getCurrentLanguage ? window.getCurrentLanguage() : 'en';
+        langSelector.innerHTML = `
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-secondary language-btn ${currentLang === 'en' ? 'active' : ''}" data-lang="en" onclick="window.setLanguage('en')">English</button>
+                <button type="button" class="btn btn-outline-secondary language-btn ${currentLang === 'es' ? 'active' : ''}" data-lang="es" onclick="window.setLanguage('es')">Español</button>
+            </div>
+        `;
+    }
+
+    const products = getActiveProducts ? getActiveProducts().slice() : [];
+    products.sort((a, b) => String(a.code || a.name || '').localeCompare(String(b.code || b.name || '')));
+    const defaultTerminal = viewState.defaultArrivalTerminalId ? getTerminalById(viewState.defaultArrivalTerminalId) : null;
+    const defaultAirport = defaultTerminal ? getAirportById(defaultTerminal.airportId) : null;
+    const destinationLabel = defaultTerminal && defaultTerminal.type === 'Income'
+        ? `${defaultAirport?.name || ''} / ${defaultTerminal.name}`
+        : t('ui.quickArrival.defaultTerminalMissing');
+    const groupLabel = viewState.defaultArrivalGroupName || t('notSet');
+
+    if (products.length === 0) {
+        container.innerHTML = `
+            <div id="quick-arrival-warnings"></div>
+            <p class="text-muted">${t('ui.quickArrival.empty')}</p>
+            <button class="btn btn-primary translatable" onclick="showProductManager()" data-i18n="productManager">${t('productManager')}</button>
+        `;
+        syncQuickArrivalSummary();
+        return;
+    }
+
+    container.innerHTML = `
+        <div id="quick-arrival-warnings"></div>
+        <button type="button" class="btn btn-primary w-100 mb-3" id="quick-arrival-save" onclick="saveQuickArrival()">Register Arrival</button>
+        <div class="mta-quick-product-grid">
+            ${products.map(product => `
+                <button type="button" class="mta-quick-product" data-product-id="${product.id}" onclick="addQuickArrivalProduct('${product.id}')">
+                    <span class="mta-quick-product__image">${getProductImageMarkup(product, '')}</span>
+                    <span class="mta-quick-product__badge mta-hidden"></span>
+                    <span class="mta-quick-product__code">${escapeHtml(getProductCodeLabel(product))}</span>
+                    <span class="mta-quick-product__name">${escapeHtml(product.name || '')}</span>
+                    <span class="mta-quick-product__price">${formatCurrency(product.defaultUnitPrice || 0)}</span>
+                </button>
+            `).join('')}
+        </div>
+    `;
+    syncQuickArrivalSummary();
 };
 
 window.populateArrivalFormSelects = () => {
@@ -588,7 +921,7 @@ window.updateArrivalGroupNameFieldVisibility = (type = null) => {
     const effectiveType = type || document.querySelector('input[name="group-type"]:checked')?.value || 'external';
     const wrap = document.getElementById('arrival-group-name-group');
     const input = document.getElementById('group-group-name');
-    const show = effectiveType !== 'liability';
+    const show = viewState.salesMode && effectiveType !== 'liability';
     if (wrap) {
         wrap.classList.toggle('mta-hidden', !show);
     }
@@ -598,8 +931,7 @@ window.updateArrivalGroupNameFieldVisibility = (type = null) => {
 };
 
 window.showCreatePassengerForm = () => {
-    // Route to new flight journey selector modal
-    showFlightJourneyModal();
+    showFlightForm();
 };
 
 /**
@@ -608,6 +940,24 @@ window.showCreatePassengerForm = () => {
 window.getAllTerminals = () => getTerminals ? getTerminals() : [];
 window.getAllPassengerGroups = () => getPassengerGroups ? getPassengerGroups() : [];
 window.getAllAirports = () => getAirports ? getAirports() : [];
+
+const getEntityMetaNoteText = (entity) => {
+    if (!entity) return '';
+    const createdText = entity.createdAt ? new Date(entity.createdAt).toLocaleString() : '-';
+    return `ID: ${entity.id || '-'} | ${t('created')}: ${createdText}`;
+};
+
+const setFormMetaNote = (noteElementId, entity = null) => {
+    const el = document.getElementById(noteElementId);
+    if (!el) return;
+    if (!entity) {
+        el.textContent = '';
+        el.classList.add('mta-hidden');
+        return;
+    }
+    el.textContent = getEntityMetaNoteText(entity);
+    el.classList.remove('mta-hidden');
+};
 
 window.showCreateAirportForm = () => {
     const form = document.getElementById('airport-form');
@@ -618,6 +968,7 @@ window.showCreateAirportForm = () => {
     const typeSelect = document.getElementById('airport-type');
     const statusGroup = document.getElementById('airport-status-group');
     const statusSelect = document.getElementById('airport-status');
+    const notesInput = document.getElementById('airport-notes');
 
     if (form) form.reset();
     if (title) title.textContent = t('newAirport') || 'New Airport';
@@ -630,6 +981,8 @@ window.showCreateAirportForm = () => {
     }
     if (statusGroup) statusGroup.classList.add('mta-hidden');
     if (statusSelect) statusSelect.value = 'active';
+    if (notesInput) notesInput.value = '';
+    setFormMetaNote('airport-meta-note', null);
     showPopup('create-airport-popup');
 };
 
@@ -648,6 +1001,7 @@ window.showEditAirportForm = (airportId) => {
     const typeSelect = document.getElementById('airport-type');
     const statusGroup = document.getElementById('airport-status-group');
     const statusSelect = document.getElementById('airport-status');
+    const notesInput = document.getElementById('airport-notes');
 
     if (title) title.textContent = `${t('edit') || 'Edit'} ${t('airports') || 'Airport'}`;
     if (submitBtn) submitBtn.textContent = t('save') || 'Save';
@@ -662,6 +1016,8 @@ window.showEditAirportForm = (airportId) => {
     }
     if (statusGroup) statusGroup.classList.remove('mta-hidden');
     if (statusSelect) statusSelect.value = airport.status || 'active';
+    if (notesInput) notesInput.value = airport.notes || '';
+    setFormMetaNote('airport-meta-note', airport);
 
     showPopup('create-airport-popup');
 };
@@ -675,8 +1031,9 @@ const updateTerminalFormState = () => {
     const submitBtn = document.getElementById('terminal-submit-btn');
     const nameInput = document.getElementById('terminal-name');
     const aliasInput = document.getElementById('terminal-code');
+    const notesInput = document.getElementById('terminal-notes');
 
-    if (!airportSelect || !typeSelect || !returnableGroup || !returnableCheckbox || !creditMessage || !submitBtn || !nameInput || !aliasInput) {
+    if (!airportSelect || !typeSelect || !returnableGroup || !returnableCheckbox || !creditMessage || !submitBtn || !nameInput || !aliasInput || !notesInput) {
         return;
     }
 
@@ -695,6 +1052,7 @@ const updateTerminalFormState = () => {
     typeSelect.disabled = isCreditAirport;
     nameInput.disabled = isCreditAirport;
     aliasInput.disabled = isCreditAirport;
+    notesInput.disabled = isCreditAirport;
 
     if (isCreditAirport) {
         returnableCheckbox.checked = false;
@@ -714,6 +1072,7 @@ window.showCreateTerminalForm = () => {
     const nameInput = document.getElementById('terminal-name');
     const aliasInput = document.getElementById('terminal-code');
     const returnableCheckbox = document.getElementById('terminal-returnable');
+    const notesInput = document.getElementById('terminal-notes');
     if (title) title.innerHTML = `&#128682; ${t('newTerminal') || 'New Terminal'}`;
     if (submitBtn) submitBtn.textContent = t('save') || 'Save';
     if (editId) editId.value = '';
@@ -721,12 +1080,15 @@ window.showCreateTerminalForm = () => {
     if (typeSelect) typeSelect.value = '';
     if (nameInput) nameInput.value = '';
     if (aliasInput) aliasInput.value = '';
+    if (notesInput) notesInput.value = '';
     if (typeSelect) typeSelect.disabled = false;
     if (nameInput) nameInput.disabled = false;
     if (aliasInput) aliasInput.disabled = false;
+    if (notesInput) notesInput.disabled = false;
     if (returnableCheckbox) returnableCheckbox.checked = false;
     if (select) select.onchange = updateTerminalFormState;
     if (typeSelect) typeSelect.onchange = updateTerminalFormState;
+    setFormMetaNote('terminal-meta-note', null);
     showPopup('create-terminal-popup');
     updateTerminalFormState();
 };
@@ -748,6 +1110,7 @@ window.showEditTerminalForm = (terminalId) => {
     const nameInput = document.getElementById('terminal-name');
     const aliasInput = document.getElementById('terminal-code');
     const returnableCheckbox = document.getElementById('terminal-returnable');
+    const notesInput = document.getElementById('terminal-notes');
 
     if (select) {
         select.innerHTML = `<option value="">${t("selectAirport")}</option>` +
@@ -775,6 +1138,12 @@ window.showEditTerminalForm = (terminalId) => {
     if (returnableCheckbox) {
         returnableCheckbox.checked = !!terminal.returnable;
     }
+    if (notesInput) {
+        notesInput.value = terminal.notes || '';
+        notesInput.disabled = false;
+    }
+
+    setFormMetaNote('terminal-meta-note', terminal);
 
     showPopup('create-terminal-popup');
     updateTerminalFormState();
@@ -933,24 +1302,36 @@ window.showMessage = showMessage;
 window.toggleHelpTooltip = (buttonEl, helpKey) => {
     if (!buttonEl) return;
 
-    const parent = buttonEl.closest('.mta-help-anchor') || buttonEl.parentElement;
-    if (!parent) return;
-
-    document.querySelectorAll('.mta-help-tooltip').forEach((tooltip) => {
-        if (tooltip.parentElement !== parent) {
-            tooltip.classList.add('mta-hidden');
-        }
-    });
-
-    let tooltip = parent.querySelector('.mta-help-tooltip');
+    let tooltip = document.getElementById('mta-global-help-tooltip');
     if (!tooltip) {
         tooltip = document.createElement('div');
+        tooltip.id = 'mta-global-help-tooltip';
         tooltip.className = 'mta-help-tooltip mta-hidden';
-        parent.appendChild(tooltip);
+        document.body.appendChild(tooltip);
+    }
+
+    const wasVisibleForSameButton = !tooltip.classList.contains('mta-hidden') &&
+        tooltip.dataset.anchorId === (buttonEl.id || helpKey);
+    if (wasVisibleForSameButton) {
+        tooltip.classList.add('mta-hidden');
+        tooltip.dataset.anchorId = '';
+        return;
     }
 
     tooltip.textContent = t(helpKey);
-    tooltip.classList.toggle('mta-hidden');
+    tooltip.dataset.anchorId = buttonEl.id || helpKey;
+    tooltip.classList.remove('mta-hidden');
+
+    const rect = buttonEl.getBoundingClientRect();
+    const margin = 8;
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const left = Math.max(
+        margin,
+        Math.min(rect.left + (rect.width / 2) - (tooltipRect.width / 2), viewportWidth - tooltipRect.width - margin)
+    );
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${rect.bottom + margin}px`;
 };
 
 document.addEventListener('click', (event) => {
@@ -959,6 +1340,7 @@ document.addEventListener('click', (event) => {
     }
     document.querySelectorAll('.mta-help-tooltip').forEach((tooltip) => {
         tooltip.classList.add('mta-hidden');
+        tooltip.dataset.anchorId = '';
     });
 });
 
@@ -1165,12 +1547,12 @@ const getAirportTotalPlannedCommitment = (airportId, flights, terminals) => {
 
 /**
  * Calculate planned commitment for a specific terminal
- * Sum of all planned flight amounts TO that terminal
+ * Sum of pending planned commitments TO that terminal
  */
 const getTerminalPlannedCommitment = (terminalId, flights) => {
     return flights
         .filter(f => f.status === 'Planned' && f.destinationTerminalId === terminalId)
-        .reduce((sum, f) => sum + (f.amount || 0), 0);
+        .reduce((sum, f) => sum + calculatePendingCommitment(f, flights), 0);
 };
 
 /**
@@ -1368,9 +1750,10 @@ const updateDashboard = () => {
     // 1. Total Arrivals
     const totalArrivals = filteredGroups.reduce((sum, group) => sum + (Number(group.totalAmount) || 0), 0);
     blocks.push(`
-        <div class="control-tower-block">
+        <div class="control-tower-block control-tower-block--action" role="button" tabindex="0" onclick="navigateControlTowerTotalArrivals()" onkeydown="handleControlTowerBlockKeydown(event, 'navigateControlTowerTotalArrivals')" aria-label="${t('totalArrivals')}">
             <div class="block-header">${renderMetricHeader("totalArrivals", "ui.help.totalArrivals")}</div>
             <div class="block-amount">${formatCurrency(totalArrivals)}</div>
+            <span class="control-tower-block__chevron" aria-hidden="true">&rsaquo;</span>
         </div>
     `);
 
@@ -1379,9 +1762,10 @@ const updateDashboard = () => {
         ? calculateWaitingPassengers(terminals, filteredFlights)
         : 0;
     blocks.push(`
-        <div class="control-tower-block">
+        <div class="control-tower-block control-tower-block--action" role="button" tabindex="0" onclick="navigateControlTowerWaitingPassengers()" onkeydown="handleControlTowerBlockKeydown(event, 'navigateControlTowerWaitingPassengers')" aria-label="${t('waitingPassengers')}">
             <div class="block-header">${renderMetricHeader("waitingPassengers", "ui.help.waitingPassengers")}</div>
             <div class="block-amount">${formatCurrency(waitingTotal)}</div>
+            <span class="control-tower-block__chevron" aria-hidden="true">&rsaquo;</span>
         </div>
     `);
 
@@ -1390,9 +1774,10 @@ const updateDashboard = () => {
         ? calculateOneWayTravelers(terminals, filteredFlights)
         : getOneWayTravelersTotal();
     blocks.push(`
-        <div class="control-tower-block">
+        <div class="control-tower-block control-tower-block--action" role="button" tabindex="0" onclick="navigateControlTowerOneWayTravelers()" onkeydown="handleControlTowerBlockKeydown(event, 'navigateControlTowerOneWayTravelers')" aria-label="${t('oneWayTravelers')}">
             <div class="block-header">${renderMetricHeader("oneWayTravelers", "ui.help.oneWayTravelers")}</div>
             <div class="block-amount">${formatCurrency(oneWayTotal)}</div>
+            <span class="control-tower-block__chevron" aria-hidden="true">&rsaquo;</span>
         </div>
     `);
 
@@ -1401,9 +1786,10 @@ const updateDashboard = () => {
         ? calculateRoundtripTravelers(terminals, filteredFlights)
         : getAssetsTotal();
     blocks.push(`
-        <div class="control-tower-block">
+        <div class="control-tower-block control-tower-block--action" role="button" tabindex="0" onclick="navigateControlTowerRoundtripTravelers()" onkeydown="handleControlTowerBlockKeydown(event, 'navigateControlTowerRoundtripTravelers')" aria-label="${t('roundtripTravelers')}">
             <div class="block-header">${renderMetricHeader("roundtripTravelers", "ui.help.roundtripTravelers")}</div>
             <div class="block-amount">${formatCurrency(roundtripTotal)}</div>
+            <span class="control-tower-block__chevron" aria-hidden="true">&rsaquo;</span>
         </div>
     `);
 
@@ -1412,9 +1798,10 @@ const updateDashboard = () => {
         ? calculateReturnedTravelers(terminals, filteredFlights)
         : 0;
     blocks.push(`
-        <div class="control-tower-block">
+        <div class="control-tower-block control-tower-block--action" role="button" tabindex="0" onclick="navigateControlTowerReturnedTravelers()" onkeydown="handleControlTowerBlockKeydown(event, 'navigateControlTowerReturnedTravelers')" aria-label="${t('returnedTravelers')}">
             <div class="block-header">${renderMetricHeader("returnedTravelers", "ui.help.returnedTravelers")}</div>
             <div class="block-amount">${formatCurrency(returnedTotal)}</div>
+            <span class="control-tower-block__chevron" aria-hidden="true">&rsaquo;</span>
         </div>
     `);
 
@@ -1425,9 +1812,10 @@ const updateDashboard = () => {
             .filter(f => f.status === 'Planned')
             .reduce((sum, f) => sum + calculatePendingCommitment(f, filteredFlights), 0);
     blocks.push(`
-        <div class="control-tower-block">
+        <div class="control-tower-block control-tower-block--action" role="button" tabindex="0" onclick="navigateControlTowerReservations()" onkeydown="handleControlTowerBlockKeydown(event, 'navigateControlTowerReservations')" aria-label="${t('reservationsLabel')}">
             <div class="block-header">${renderMetricHeader("reservationsLabel", "ui.help.reservations")}</div>
             <div class="block-amount">${formatCurrency(reservationsTotal)}</div>
+            <span class="control-tower-block__chevron" aria-hidden="true">&rsaquo;</span>
         </div>
     `);
 
@@ -1624,16 +2012,102 @@ const updateExpandIcons = () => {
  * Show "Add Leg" dialog for root flight
  * Uses a proper modal with radio buttons for leg type selection
  */
+const getAddLegEligibility = (rootFlight, flights = getFlights(), terminals = getTerminals()) => {
+    if (!rootFlight) {
+        return { toDestination: false, returnLeg: false, messageKey: 'ui.addLeg.noValidActions' };
+    }
+
+    const destinationTerminal = terminals.find(t => t.id === rootFlight.destinationTerminalId);
+    const pendingCommitment = rootFlight.status === 'Planned'
+        ? calculatePendingCommitment(rootFlight, flights)
+        : 0;
+    const hasReturnLegs = flights.some(f =>
+        f.sourceFlightId === rootFlight.id &&
+        f.status === 'Completed' &&
+        isReturnFlight(f, terminals)
+    );
+    const toDestination = rootFlight.status === 'Planned' && pendingCommitment > 0 && !hasReturnLegs;
+    const isReturnableDestination = !!(
+        destinationTerminal &&
+        destinationTerminal.type === 'Expense' &&
+        destinationTerminal.returnable === true
+    );
+    const returnSourceFlightId = getReturnSourceFlightIdForRoot(rootFlight.id, flights, terminals);
+    let returnCap = 0;
+    if (
+        isReturnableDestination &&
+        returnSourceFlightId &&
+        typeof getRemainingReturnableAmount === 'function'
+    ) {
+        returnCap = getRemainingReturnableAmount(returnSourceFlightId);
+    }
+
+    const returnLeg = isReturnableDestination && returnCap > 0 && (
+        rootFlight.status === 'Completed' ||
+        (rootFlight.status === 'Planned' && (hasReturnLegs || pendingCommitment === 0))
+    );
+    const messageKey = returnLeg || toDestination
+        ? null
+        : 'ui.addLeg.noValidActions';
+
+    return { toDestination, returnLeg, returnCap, pendingCommitment, hasReturnLegs, messageKey };
+};
+
+const getReturnSourceFlightIdForRoot = (rootFlightId, flights = getFlights(), terminals = getTerminals()) => {
+    const rootFlight = flights.find(f => f.id === rootFlightId);
+    if (!rootFlight) return null;
+    if (rootFlight.status === 'Completed') return rootFlight.id;
+    if (rootFlight.status !== 'Planned') return null;
+
+    const outboundChildren = getChronologicalFlightOrder(
+        flights.filter(f =>
+            f.sourceFlightId === rootFlight.id &&
+            f.status === 'Completed' &&
+            !isReturnFlight(f, terminals)
+        )
+    );
+
+    if (typeof getRemainingReturnableAmount === 'function') {
+        const sourceWithCapacity = outboundChildren.find(child =>
+            getRemainingReturnableAmount(child.id) > 0
+        );
+        if (sourceWithCapacity) return sourceWithCapacity.id;
+    }
+
+    const fallbackSource = outboundChildren[outboundChildren.length - 1];
+    return fallbackSource ? fallbackSource.id : null;
+};
+
+window.getReturnSourceFlightIdForRoot = getReturnSourceFlightIdForRoot;
+
 window.showAddLegDialog = (rootFlightId) => {
     const modal = document.getElementById('add-leg-modal');
     if (!modal) return;
+
+    const rootFlight = getFlightById(rootFlightId);
+    const eligibility = getAddLegEligibility(rootFlight);
+    if (!eligibility.toDestination && !eligibility.returnLeg) {
+        showMessage(t(eligibility.messageKey) || 'No valid leg actions are available for this journey.', 'error');
+        return;
+    }
     
     // Store the current flight ID
     modal.dataset.rootFlightId = rootFlightId;
     
-    // Reset radio selection to "To destination"
     const toDestRadio = document.getElementById('add-leg-to-destination');
-    if (toDestRadio) toDestRadio.checked = true;
+    const returnRadio = document.getElementById('add-leg-return');
+    const toDestOption = toDestRadio?.closest('.custom-control');
+    const returnOption = returnRadio?.closest('.custom-control');
+    if (toDestOption) toDestOption.classList.toggle('mta-hidden', !eligibility.toDestination);
+    if (returnOption) returnOption.classList.toggle('mta-hidden', !eligibility.returnLeg);
+    if (toDestRadio) {
+        toDestRadio.disabled = !eligibility.toDestination;
+        toDestRadio.checked = eligibility.toDestination;
+    }
+    if (returnRadio) {
+        returnRadio.disabled = !eligibility.returnLeg;
+        returnRadio.checked = !eligibility.toDestination && eligibility.returnLeg;
+    }
     
     // Show modal
     modal.classList.remove('mta-hidden');
@@ -1728,6 +2202,7 @@ window.showFlightForm = () => {
     const ordinalField = document.getElementById('flight-form-ordinal');
     const ordinalGroup = document.getElementById('ordinal-field-group');
     const editIdField = document.getElementById('flight-form-edit-id');
+    const notesField = document.getElementById('flight-form-notes');
     const titleEl = document.querySelector('#flight-form-modal h5');
     if (dateField) {
         const today = new Date();
@@ -1744,6 +2219,9 @@ window.showFlightForm = () => {
     }
     if (editIdField) {
         editIdField.value = '';
+    }
+    if (notesField) {
+        notesField.value = '';
     }
     if (titleEl) {
         titleEl.textContent = t('createFlight');
@@ -1787,6 +2265,7 @@ window.showEditFlightForm = (flightId) => {
     const amountField = document.getElementById('flight-form-amount');
     const ordinalField = document.getElementById('flight-form-ordinal');
     const ordinalGroup = document.getElementById('ordinal-field-group');
+    const notesField = document.getElementById('flight-form-notes');
 
     if (editIdField) {
         editIdField.value = flight.id;
@@ -1820,6 +2299,9 @@ window.showEditFlightForm = (flightId) => {
     }
     if (ordinalField) {
         ordinalField.value = flight.ordinal ?? '';
+    }
+    if (notesField) {
+        notesField.value = flight.notes || '';
     }
 };
 
@@ -1914,64 +2396,6 @@ window.populateLiabilityGroups = () => {
 };
 
 /**
- * Legacy function name compatibility - maps to new unified form
- */
-window.showFlightJourneyModal = () => {
-    window.showFlightForm();
-};
-
-/**
- * Legacy function name compatibility
- */
-window.closeFlightJourneyModal = () => {
-    window.closeFlightForm();
-};
-
-/**
- * Legacy function name compatibility
- */
-window.proceedToFlightForm = () => {
-    // This is no longer needed in unified flow
-    // Travel mode selector is now in the same form
-};
-
-/**
- * Legacy function name compatibility - maps to direct flight form
- */
-window.showDirectFlightForm = () => {
-    window.showFlightForm();
-};
-
-/**
- * Legacy function name compatibility - maps to planned flight form
- */
-window.showPlannedFlightForm = () => {
-    window.showFlightForm();
-};
-
-/**
- * Legacy function name compatibility
- */
-window.updateDirectFlightFundingMode = () => {
-    window.updateFlightFormTravelMode();
-};
-
-/**
- * Legacy function name compatibility
- */
-window.populateDirectLiabilityGroups = () => {
-    window.populateLiabilityGroups();
-};
-
-/**
- * Back button (no longer used in unified flow)
- */
-window.backToFlightJourney = () => {
-    // In unified flow, there's no back - just cancel
-    window.closeFlightForm();
-};
-
-/**
  * Close leg destination form
  */
 window.closeLegDestModal = () => {
@@ -1987,19 +2411,13 @@ window.closeLegReturnModal = () => {
     if (modal) modal.classList.add('mta-hidden');
 };
 
-/**
- * Populate terminal dropdowns for Direct flight (with passenger groups)
- */
 window.populateTerminalSelects = (formType) => {
     const terminals = getAllTerminals();
-    const groups = getAllPassengerGroups();
     
     if (formType === 'flight-form') {
-        // Unified flight form: populate origin terminals (for "I've got tickets" mode)
         const originSelect = document.getElementById('flight-form-origin-terminal');
         if (originSelect) {
             originSelect.innerHTML = '<option value="">Select origin terminal...</option>';
-            // Filter terminals with balance > 0 and format with balance display
             terminals
                 .filter(t => {
                     if (t.type === 'Expense') return false;
@@ -2027,48 +2445,7 @@ window.populateTerminalSelects = (formType) => {
                 destSelect.appendChild(opt);
             });
         }
-    } else if (formType === 'direct') {
-        // Legacy support for old direct form structure
-        // Note: direct-passenger-group is now hidden (auto-calculated)
-        // Populate origin terminals (for "I've got tickets" mode)
-        const originSelect = document.getElementById('direct-origin-terminal');
-        if (originSelect) {
-            originSelect.innerHTML = '<option value="">Select origin terminal...</option>';
-            terminals
-                .filter(t => t.type === 'Income' || t.type === 'Transit')
-                .forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t.id;
-                opt.textContent = `${t.alias} (${t.name}) - ${t.type}`;
-                originSelect.appendChild(opt);
-            });
-        }
-        
-        // Populate destination terminals
-        const destSelect = document.getElementById('direct-destination-terminal');
-        if (destSelect) {
-            destSelect.innerHTML = '<option value="">Select destination terminal...</option>';
-            terminals.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t.id;
-                opt.textContent = `${t.alias} (${t.name}) - ${t.type}`;
-                destSelect.appendChild(opt);
-            });
-        }
     } else if (formType === 'leg-dest') {
-        // Populate passenger groups for leg
-        const groupSelect = document.getElementById('leg-dest-passenger-group');
-        if (groupSelect) {
-            groupSelect.innerHTML = '<option value="">Select passenger group...</option>';
-            groups.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g.id;
-                opt.textContent = g.name;
-                groupSelect.appendChild(opt);
-            });
-        }
-        
-        // Populate origin terminals (where money comes from)
         const originSelect = document.getElementById('leg-dest-origin-terminal');
         if (originSelect) {
             originSelect.innerHTML = '<option value="">Select origin terminal...</option>';
@@ -2133,6 +2510,16 @@ window.submitAddLegMode = () => {
     }
     
     const legType = toDestRadio?.checked ? 'toDestination' : 'return';
+    const rootFlight = getFlightById(rootFlightId);
+    const eligibility = getAddLegEligibility(rootFlight);
+    if (legType === 'toDestination' && !eligibility.toDestination) {
+        showMessage(t('ui.addLeg.toDestinationNotAllowed'), 'error');
+        return;
+    }
+    if (legType === 'return' && !eligibility.returnLeg) {
+        showMessage(t('ui.addLeg.returnNotAllowed'), 'error');
+        return;
+    }
     
     if (legType === 'toDestination') {
         showLegDestinationForm(rootFlightId);
@@ -2145,6 +2532,14 @@ window.submitAddLegMode = () => {
  * Show leg to destination form
  */
 window.showLegDestinationForm = (rootFlightId) => {
+    const rootFlight = getFlightById(rootFlightId);
+    const eligibility = getAddLegEligibility(rootFlight);
+    if (!eligibility.toDestination) {
+        showMessage(t('ui.addLeg.toDestinationNotAllowed'), 'error');
+        closeAddLegModal();
+        return;
+    }
+
     // Close the Add Leg modal
     closeAddLegModal();
     
@@ -2178,6 +2573,14 @@ window.showLegDestinationForm = (rootFlightId) => {
  * Show leg return form
  */
 window.showLegReturnForm = (rootFlightId) => {
+    const rootFlight = getFlightById(rootFlightId);
+    const eligibility = getAddLegEligibility(rootFlight);
+    if (!eligibility.returnLeg) {
+        showMessage(t('ui.addLeg.returnNotAllowed'), 'error');
+        closeAddLegModal();
+        return;
+    }
+
     // Close the Add Leg modal
     closeAddLegModal();
     
@@ -2265,26 +2668,42 @@ const populateLegReturnFormSelects = (rootFlightId) => {
     if (!rootFlight) return;
     
     const terminals = getTerminals();
-    const destTerminal = terminals.find(t => t.id === rootFlight.destinationTerminalId);
+    const returnSourceFlightId = typeof getReturnSourceFlightIdForRoot === 'function'
+        ? getReturnSourceFlightIdForRoot(rootFlightId, flights, terminals)
+        : rootFlightId;
+    const sourceFlight = flights.find(f => f.id === returnSourceFlightId) || rootFlight;
+    const sourceExpenseTerminal = terminals.find(t => t.id === sourceFlight.destinationTerminalId);
+    const enforcedDestinationTerminal = terminals.find(t => t.id === sourceFlight.originTerminalId);
     
     // Display origin terminal (set to destination from root flight - Expense)
     const originDisplay = document.getElementById('leg-return-origin-display');
-    if (originDisplay && destTerminal) {
-        originDisplay.value = destTerminal.name + ' (Expense)';
+    if (originDisplay && sourceExpenseTerminal) {
+        originDisplay.value = sourceExpenseTerminal.name + ' (Expense)';
     }
     
-    // Populate destination terminals
+    // Populate destination terminal: locked to the business-rule destination when resolvable.
     const destSelect = document.getElementById('leg-return-destination-terminal');
     if (destSelect) {
-        destSelect.innerHTML = '<option value="">Select where money returns...</option>';
-        terminals
-            .filter(t => t.type !== 'Expense') // Can return to Income or Transit
-            .forEach(t => {
-                const option = document.createElement('option');
-                option.value = t.id;
-                option.textContent = t.name;
-                destSelect.appendChild(option);
-            });
+        if (enforcedDestinationTerminal) {
+            destSelect.innerHTML = '';
+            const option = document.createElement('option');
+            option.value = enforcedDestinationTerminal.id;
+            option.textContent = enforcedDestinationTerminal.name;
+            destSelect.appendChild(option);
+            destSelect.value = enforcedDestinationTerminal.id;
+            destSelect.disabled = true;
+        } else {
+            destSelect.innerHTML = '<option value="">Select where money returns...</option>';
+            terminals
+                .filter(t => t.type !== 'Expense') // Fallback when source cannot be resolved
+                .forEach(t => {
+                    const option = document.createElement('option');
+                    option.value = t.id;
+                    option.textContent = t.name;
+                    destSelect.appendChild(option);
+                });
+            destSelect.disabled = false;
+        }
     }
 };
 
@@ -2298,12 +2717,14 @@ const viewState = {
     groupArrivals: false,
     departureViewFilter: 'reservations',
     departureSemaphoreFilter: 'all',
+    terminalBusinessViewFilter: 'all',
     terminalTypeFilter: 'all',
     airportTypeFilter: 'all',
     dashboardPeriodFilter: 'all',
     ledgerMode: false,
     salesMode: false,
     deleteEnabledMode: false,
+    navigationContext: null,
     defaultArrivalName: '',
     defaultArrivalGroupName: '',
     defaultArrivalTerminalId: '',
@@ -2311,6 +2732,129 @@ const viewState = {
 };
 
 const UIPREFERENCES_STORAGE_KEY = 'mta-ui-preferences-v1';
+let hasAppliedInitialSalesModeTab = false;
+
+const activateMtaTab = (href) => {
+    const targetPane = document.querySelector(href);
+    if (!targetPane) return;
+
+    try {
+        if (window.jQuery && typeof jQuery(`.nav-tabs .nav-link[href="${href}"]`).tab === 'function') {
+            jQuery(`.nav-tabs .nav-link[href="${href}"]`).tab('show');
+            return;
+        }
+    } catch (error) {
+        console.warn('Failed to activate tab through Bootstrap:', error);
+    }
+
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
+    targetPane.classList.add('show', 'active');
+    document.querySelectorAll('.nav-tabs .nav-link, #mobile-nav .mobile-nav-link').forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === href);
+    });
+};
+
+const setNavigationContext = (context) => {
+    viewState.navigationContext = context && context.source === 'controlTower' && context.labelKey
+        ? {
+            source: 'controlTower',
+            labelKey: context.labelKey,
+            destinationHref: context.destinationHref || '#terminals'
+        }
+        : null;
+    renderNavigationContextHeaders();
+};
+
+const clearNavigationContext = () => {
+    if (!viewState.navigationContext) return;
+    viewState.navigationContext = null;
+    renderNavigationContextHeaders();
+};
+window.clearNavigationContext = clearNavigationContext;
+
+const renderNavigationContextHeaders = () => {
+    document.querySelectorAll('[data-navigation-context-for]').forEach(container => {
+        const context = viewState.navigationContext;
+        const destinationHref = container.getAttribute('data-navigation-context-for');
+        if (!context || context.source !== 'controlTower' || destinationHref !== context.destinationHref) {
+            container.innerHTML = '';
+            container.classList.add('mta-hidden');
+            return;
+        }
+
+        container.classList.remove('mta-hidden');
+        container.innerHTML = `
+            <button type="button" class="mta-navigation-context__source" onclick="navigateToControlTowerFromContext()">
+                &larr; ${t('ui.navigationContext.fromControlTower')}
+            </button>
+            <span class="mta-navigation-context__separator">&rsaquo;</span>
+            <span class="mta-navigation-context__reason">${t(context.labelKey)}</span>
+        `;
+    });
+};
+
+window.navigateToControlTowerFromContext = () => {
+    clearNavigationContext();
+    activateMtaTab('#dashboard');
+};
+
+window.handleControlTowerBlockKeydown = (event, handlerName) => {
+    if (!event || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    const handler = window[handlerName];
+    if (typeof handler === 'function') {
+        handler();
+    }
+};
+
+window.navigateControlTowerWaitingPassengers = () => {
+    setNavigationContext({ source: 'controlTower', labelKey: 'waitingPassengers', destinationHref: '#terminals' });
+    window.switchTerminalsView('terminals-flights');
+    window.setTerminalTypeFilter('all');
+    window.setTerminalBusinessViewFilter('waiting-passengers');
+    activateMtaTab('#terminals');
+    renderNavigationContextHeaders();
+};
+
+window.navigateControlTowerTotalArrivals = () => {
+    setNavigationContext({ source: 'controlTower', labelKey: 'totalArrivals', destinationHref: '#income' });
+    window.switchArrivalsView('arrivals-groups');
+    window.setArrivalTypeFilter('all');
+    activateMtaTab('#income');
+    renderNavigationContextHeaders();
+};
+
+window.navigateControlTowerOneWayTravelers = () => {
+    setNavigationContext({ source: 'controlTower', labelKey: 'oneWayTravelers', destinationHref: '#flights' });
+    window.setDepartureViewFilter('completed');
+    window.setDepartureSemaphoreFilter('oneway');
+    activateMtaTab('#flights');
+    renderNavigationContextHeaders();
+};
+
+window.navigateControlTowerRoundtripTravelers = () => {
+    setNavigationContext({ source: 'controlTower', labelKey: 'roundtripTravelers', destinationHref: '#flights' });
+    window.setDepartureViewFilter('completed');
+    window.setDepartureSemaphoreFilter('roundtrip');
+    activateMtaTab('#flights');
+    renderNavigationContextHeaders();
+};
+
+window.navigateControlTowerReturnedTravelers = () => {
+    setNavigationContext({ source: 'controlTower', labelKey: 'returnedTravelers', destinationHref: '#flights' });
+    window.setDepartureViewFilter('returned');
+    window.setDepartureSemaphoreFilter('all');
+    activateMtaTab('#flights');
+    renderNavigationContextHeaders();
+};
+
+window.navigateControlTowerReservations = () => {
+    setNavigationContext({ source: 'controlTower', labelKey: 'reservationsLabel', destinationHref: '#terminals' });
+    window.switchTerminalsView('airports-terminals');
+    window.setAirportTypeFilter('all');
+    activateMtaTab('#terminals');
+    renderNavigationContextHeaders();
+};
 
 const loadCurrentUIPreferences = () => {
     if (typeof localStorage === 'undefined') return;
@@ -2341,11 +2885,21 @@ const loadCurrentUIPreferences = () => {
             if (['all', 'connection', 'oneway', 'roundtrip'].includes(saved.departureSemaphoreFilter)) {
                 viewState.departureSemaphoreFilter = saved.departureSemaphoreFilter;
             }
+            if (['all', 'waiting-passengers'].includes(saved.terminalBusinessViewFilter)) {
+                viewState.terminalBusinessViewFilter = saved.terminalBusinessViewFilter;
+            }
+            if (saved.terminalTypeFilter === 'waiting') {
+                viewState.terminalBusinessViewFilter = 'waiting-passengers';
+                viewState.terminalTypeFilter = 'all';
+            }
             if (['all', 'checkin', 'connection', 'checkout-oneway', 'checkout-roundtrip'].includes(saved.terminalTypeFilter)) {
                 viewState.terminalTypeFilter = saved.terminalTypeFilter;
             }
             if (['all', 'normal', 'alert'].includes(saved.airportTypeFilter)) {
                 viewState.airportTypeFilter = saved.airportTypeFilter;
+            }
+            if (['all', 'current-month', 'last-month'].includes(saved.dashboardPeriodFilter)) {
+                viewState.dashboardPeriodFilter = saved.dashboardPeriodFilter;
             }
             viewState.ledgerMode = saved.ledgerMode === true;
             viewState.salesMode = saved.salesMode === true;
@@ -2369,11 +2923,11 @@ const loadCurrentUIPreferences = () => {
 const applyCurrentUIPreferences = () => {
     const ledgerToggle = document.getElementById('ledger-mode-toggle');
     if (ledgerToggle) {
-        ledgerToggle.classList.toggle('active', viewState.ledgerMode);
+        ledgerToggle.checked = viewState.ledgerMode === true;
     }
     const deleteEnabledModeToggle = document.getElementById('delete-enabled-mode-toggle');
     if (deleteEnabledModeToggle) {
-        deleteEnabledModeToggle.classList.toggle('active', viewState.deleteEnabledMode);
+        deleteEnabledModeToggle.checked = viewState.deleteEnabledMode === true;
     }
     const defaultArrivalTerminalSelect = document.getElementById('default-arrival-terminal');
     if (defaultArrivalTerminalSelect) {
@@ -2410,8 +2964,19 @@ const applyCurrentUIPreferences = () => {
     const newTerminalBtn = document.getElementById('btn-new-terminal');
     const newAirportBtn = document.getElementById('btn-new-airport');
     const viewSwitchBtn = document.getElementById('terminals-view-switch');
+    const terminalsViewSelect = document.getElementById('terminals-view-select');
     const terminalsTypeFilter = document.getElementById('terminals-type-filter');
     const airportsTypeFilter = document.getElementById('airports-type-filter');
+    document.querySelectorAll('.mta-sales-only').forEach(element => {
+        element.classList.toggle('mta-hidden', !viewState.salesMode);
+    });
+    if (!viewState.salesMode && document.getElementById('quick-arrival')?.classList.contains('active')) {
+        activateMtaTab('#dashboard');
+    }
+    if (viewState.salesMode && !hasAppliedInitialSalesModeTab) {
+        hasAppliedInitialSalesModeTab = true;
+        activateMtaTab('#quick-arrival');
+    }
     if (arrivalsTypeFilter) {
         arrivalsTypeFilter.querySelectorAll('.mta-filter-toggle-btn').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-filter') === viewState.arrivalTypeFilter);
@@ -2458,7 +3023,7 @@ const applyCurrentUIPreferences = () => {
         cargoBlock.classList.toggle('mta-hidden', !viewState.salesMode || arrivalType === 'liability');
     }
     if (salesModeToggle) {
-        salesModeToggle.classList.toggle('active', viewState.salesMode);
+        salesModeToggle.checked = viewState.salesMode === true;
     }
     if (departuresViewSelect) {
         departuresViewSelect.value = viewState.departureViewFilter;
@@ -2482,6 +3047,10 @@ const applyCurrentUIPreferences = () => {
         viewSwitchBtn.setAttribute('data-i18n', labelKey);
         viewSwitchBtn.textContent = t(labelKey);
     }
+    if (terminalsViewSelect) {
+        terminalsViewSelect.classList.toggle('mta-hidden', viewState.terminals !== 'terminals-flights');
+        terminalsViewSelect.value = viewState.terminalBusinessViewFilter;
+    }
     if (terminalsTypeFilter) {
         terminalsTypeFilter.classList.toggle('mta-hidden', viewState.terminals !== 'terminals-flights');
         terminalsTypeFilter.querySelectorAll('.mta-filter-toggle-btn').forEach(btn => {
@@ -2494,6 +3063,7 @@ const applyCurrentUIPreferences = () => {
             btn.classList.toggle('active', btn.getAttribute('data-filter') === viewState.airportTypeFilter);
         });
     }
+    renderNavigationContextHeaders();
 };
 
 window.persistCurrentUIPreferences = () => {
@@ -2507,8 +3077,10 @@ window.persistCurrentUIPreferences = () => {
         groupArrivals: viewState.groupArrivals,
         departureViewFilter: viewState.departureViewFilter,
         departureSemaphoreFilter: viewState.departureSemaphoreFilter,
+        terminalBusinessViewFilter: viewState.terminalBusinessViewFilter,
         terminalTypeFilter: viewState.terminalTypeFilter,
         airportTypeFilter: viewState.airportTypeFilter,
+        dashboardPeriodFilter: viewState.dashboardPeriodFilter,
         ledgerMode: viewState.ledgerMode,
         salesMode: viewState.salesMode,
         deleteEnabledMode: viewState.deleteEnabledMode,
@@ -2905,6 +3477,22 @@ const terminalMatchesTypeFilter = (terminal) => {
         default:
             return true;
     }
+};
+
+const terminalMatchesBusinessViewFilter = (terminal) => {
+    switch (viewState.terminalBusinessViewFilter) {
+        case 'waiting-passengers':
+            return terminal.type === 'Income' || terminal.type === 'Transit';
+        case 'all':
+        default:
+            return true;
+    }
+};
+
+const getTerminalBalanceDisplayLabel = (terminal) => {
+    return terminal && terminal.type === 'Expense'
+        ? t('ui.terminals.balanceLabel.travelers')
+        : t('ui.terminals.balanceLabel.waitingPassengers');
 };
 
 const rootHasReturnLeg = (flight, flights, terminals) => {
@@ -3433,29 +4021,68 @@ const updateFlightsList = () => {
             `
             : `<span class="mta-legs-count">${legsDisplay.text}</span>`;
         
-        // Subflights: payment legs (exclude return flights)
-        const paymentLegs = flights.filter(f => f.sourceFlightId === rootFlight.id && !isReturnFlight(f, terminals));
-        const sortedPaymentLegs = sortRelatedFlights(paymentLegs);
-        
-        // Return child flights
-        const returnLegs = flights.filter(f => f.sourceFlightId === rootFlight.id && isReturnFlight(f, terminals));
-        const allChildren = sortRelatedFlights([...sortedPaymentLegs, ...returnLegs]);
-        const chronologicalChildren = getChronologicalFlightOrder(allChildren);
+        // Child legs are presented as two independent journey phases.
+        const fulfillmentLegs = rootFlight.status === 'Planned'
+            ? getChronologicalFlightOrder(
+                flights.filter(f =>
+                    f.sourceFlightId === rootFlight.id &&
+                    f.status === 'Completed' &&
+                    !isReturnFlight(f, terminals)
+                )
+            )
+            : [];
+        const returnLegs = getChronologicalFlightOrder(
+            flights.filter(f =>
+                f.sourceFlightId === rootFlight.id &&
+                f.status === 'Completed' &&
+                isReturnFlight(f, terminals)
+            )
+        );
+        const allChildren = sortRelatedFlights([...fulfillmentLegs, ...returnLegs]);
         const pendingAfterChild = new Map();
+        const stillOutsideAfterChild = new Map();
         const chronologicalIndexById = new Map();
-        let signedCommitted = 0;
-        chronologicalChildren.forEach((child, index) => {
-            const signedAmount = isReturnFlight(child, terminals) ? -(child.amount || 0) : (child.amount || 0);
-            signedCommitted += signedAmount;
-            pendingAfterChild.set(child.id, Math.max(0, (rootFlight.amount || 0) - signedCommitted));
+        const hasReturnLegs = returnLegs.length > 0;
+        const chronologicalDisplayChildren = getChronologicalFlightOrder(allChildren);
+        chronologicalDisplayChildren.forEach((child, index) => {
             chronologicalIndexById.set(child.id, index + 1);
         });
+
+        let pendingRunning = rootFlight.amount || 0;
+        fulfillmentLegs.forEach((child) => {
+            pendingRunning = Math.max(0, pendingRunning - (child.amount || 0));
+            pendingAfterChild.set(child.id, pendingRunning);
+        });
+
+        const amountReachedDestination = rootFlight.status === 'Completed'
+            ? (rootFlight.amount || 0)
+            : fulfillmentLegs.reduce((sum, child) => sum + (child.amount || 0), 0);
+        let stillOutsideRunning = amountReachedDestination;
+        returnLegs.forEach((child) => {
+            stillOutsideRunning = Math.max(0, stillOutsideRunning - (child.amount || 0));
+            stillOutsideAfterChild.set(child.id, stillOutsideRunning);
+        });
+        const stillOutsideAmount = Math.max(0, stillOutsideRunning);
+        const addLegEligibility = getAddLegEligibility(rootFlight, flights, terminals);
+        const canAddLeg = addLegEligibility.toDestination || addLegEligibility.returnLeg;
         
         // Commitment data
         const pendingCommitment = calculatePendingCommitment(rootFlight, flights);
-        const reservationsAmount = formatCurrency(rootFlight.amount || 0);
-        const pendingAmount = formatCurrency(pendingCommitment);
-        const travelersAmount = formatCurrency(rootFlight.amount || 0);
+        const rootPrimaryLabel = t('travelersLabel') || 'Travelers';
+        const rootPrimaryAmount = formatCurrency(rootFlight.amount || 0);
+        const rootSecondaryRows = [];
+        if (rootFlight.status === 'Planned') {
+            rootSecondaryRows.push({
+                label: t('yetToTravelLabel') || 'Yet to Travel',
+                amount: hasReturnLegs ? pendingRunning : pendingCommitment
+            });
+        }
+        if (hasReturnLegs) {
+            rootSecondaryRows.push({
+                label: t('stillOutsideLabel') || 'Still outside',
+                amount: stillOutsideAmount
+            });
+        }
         
         // Build root flight card - matching Arrivals canonical template
         const rootCard = `
@@ -3477,15 +4104,11 @@ const updateFlightsList = () => {
                     </div>
                     <div class="mta-canonical-item__actions">
                         <div>
-                            <strong>${rootFlight.status === 'Planned' 
-                                ? `${t('reservationsLabel') || 'Reservations'}: ${reservationsAmount}`
-                                : `${t('travelersLabel') || 'Travelers'}: ${travelersAmount}`
-                            }</strong>
+                            <strong>${rootPrimaryLabel}: ${rootPrimaryAmount}</strong>
                         </div>
-                        ${rootFlight.status === 'Planned' 
-                            ? `<div><strong>${t('yetToTravelLabel') || 'Yet to Travel'}: ${pendingAmount}</strong></div>`
-                            : ''
-                        }
+                        ${rootSecondaryRows.map(row => `
+                            <div><strong>${row.label}: ${formatCurrency(row.amount)}</strong></div>
+                        `).join('')}
                     </div>
                 </div>
             </div>
@@ -3497,7 +4120,7 @@ const updateFlightsList = () => {
             // Show "Add Leg" button with empty state message after when no children exist
             relatedHtml = `
                 <div id="subflight-${rootFlight.id}" class="mta-canonical-related mta-hidden">
-                    <div class="mta-canonical-related__header" onclick="showAddLegDialog('${rootFlight.id}')" style="cursor: pointer; color: #007bff;">+ ${t('addLegLabel') || 'Add Leg'}</div>
+                    ${canAddLeg ? `<div class="mta-canonical-related__header" onclick="showAddLegDialog('${rootFlight.id}')" style="cursor: pointer; color: #007bff;">+ ${t('addLegLabel') || 'Add Leg'}</div>` : ''}
                     <small class="text-muted">${t("noRelatedFlights")}</small>
                 </div>
             `;
@@ -3506,7 +4129,9 @@ const updateFlightsList = () => {
             let relatedContent = '';
             
             // Add "Add Leg" header at the beginning
-            relatedContent += `<div class="mta-canonical-related__header" onclick="showAddLegDialog('${rootFlight.id}')" style="cursor: pointer; color: #007bff;">+ ${t('addLegLabel') || 'Add Leg'}</div>`;
+            if (canAddLeg) {
+                relatedContent += `<div class="mta-canonical-related__header" onclick="showAddLegDialog('${rootFlight.id}')" style="cursor: pointer; color: #007bff;">+ ${t('addLegLabel') || 'Add Leg'}</div>`;
+            }
             
             // Add all children without date grouping
             allChildren.forEach((child) => {
@@ -3524,7 +4149,14 @@ const updateFlightsList = () => {
                 // Get the appropriate label for the amount (same as Arrivals flights)
                 const amountLabel = getFlightAmountLabel(child, terminals);
                 const childAmount = formatCurrency(child.amount || 0);
-                const remainingBalance = formatCurrency(pendingAfterChild.get(child.id) || 0);
+                const showStillOutside = hasReturnLegs && isReturnFlight(child, terminals);
+                const secondaryLabel = showStillOutside
+                    ? (t('stillOutsideLabel') || 'Still outside')
+                    : (t('yetToTravelLabel') || 'Yet to Travel');
+                const secondaryAmount = formatCurrency(showStillOutside
+                    ? (stillOutsideAfterChild.get(child.id) || 0)
+                    : (pendingAfterChild.get(child.id) || 0)
+                );
                 
                 relatedContent += `
                     <div class="mta-canonical-item mta-canonical-item--related">
@@ -3542,7 +4174,7 @@ const updateFlightsList = () => {
                                 </div>
                                 ${viewState.ledgerMode ? `
                                 <div class="mta-canonical-item__secondary">
-                                    ${t('yetToTravelLabel') || 'Yet to Travel'}: ${remainingBalance}
+                                    ${secondaryLabel}: ${secondaryAmount}
                                 </div>
                                 ` : ''}
                             </div>
@@ -3618,12 +4250,23 @@ window.switchArrivalsView = (view) => {
 };
 
 window.toggleSalesMode = () => {
-    viewState.salesMode = !viewState.salesMode;
+    window.setSalesModeEnabled(!viewState.salesMode);
+};
+
+window.setSalesModeEnabled = (isEnabled) => {
+    viewState.salesMode = isEnabled === true;
     if (!viewState.salesMode && viewState.arrivals === 'arrivals-cargo') {
         viewState.arrivals = 'arrivals-groups';
     }
     applyCurrentUIPreferences();
+    // Navigate to Quick Arrival only when turning Sales Mode ON
+    if (viewState.salesMode) {
+        activateMtaTab('#quick-arrival');
+    }
     window.persistCurrentUIPreferences();
+    if (typeof window.updateQuickArrivalTab === 'function') {
+        window.updateQuickArrivalTab();
+    }
     updateArrivalsTab();
 };
 
@@ -3667,6 +4310,7 @@ window.setDashboardPeriodFilter = (filter) => {
     }
     viewState.dashboardPeriodFilter = filter;
     applyCurrentUIPreferences();
+    window.persistCurrentUIPreferences();
     updateDashboard();
 };
 
@@ -3689,6 +4333,16 @@ window.setDepartureSemaphoreFilter = (filter) => {
     applyCurrentUIPreferences();
     window.persistCurrentUIPreferences();
     updateFlightsList();
+};
+
+window.setTerminalBusinessViewFilter = (filter) => {
+    if (!['all', 'waiting-passengers'].includes(filter)) {
+        return;
+    }
+    viewState.terminalBusinessViewFilter = filter;
+    applyCurrentUIPreferences();
+    window.persistCurrentUIPreferences();
+    updateTerminalsList();
 };
 
 window.setTerminalTypeFilter = (filter) => {
@@ -3715,10 +4369,14 @@ window.setAirportTypeFilter = (filter) => {
 // GLOBAL LEDGER MODE TOGGLE
 // ============================================================================
 window.toggleLedgerMode = () => {
-    viewState.ledgerMode = !viewState.ledgerMode;
+    window.setLedgerModeEnabled(!viewState.ledgerMode);
+};
+
+window.setLedgerModeEnabled = (isEnabled) => {
+    viewState.ledgerMode = isEnabled === true;
     const toggle = document.getElementById('ledger-mode-toggle');
     if (toggle) {
-        toggle.classList.toggle('active', viewState.ledgerMode);
+        toggle.checked = viewState.ledgerMode;
     }
     window.persistCurrentUIPreferences();
     // Refresh arrivals to show/hide running remaining
@@ -3728,10 +4386,14 @@ window.toggleLedgerMode = () => {
 window.isDeleteEnabledMode = () => viewState.deleteEnabledMode === true;
 
 window.toggleDeleteEnabledMode = () => {
-    viewState.deleteEnabledMode = !viewState.deleteEnabledMode;
+    window.setDeleteEnabledMode(!viewState.deleteEnabledMode);
+};
+
+window.setDeleteEnabledMode = (isEnabled) => {
+    viewState.deleteEnabledMode = isEnabled === true;
     const toggle = document.getElementById('delete-enabled-mode-toggle');
     if (toggle) {
-        toggle.classList.toggle('active', viewState.deleteEnabledMode);
+        toggle.checked = viewState.deleteEnabledMode;
     }
     window.persistCurrentUIPreferences();
     if (window.updateAll) window.updateAll();
@@ -3779,6 +4441,7 @@ const updateTerminalsList = () => {
     const flights = getFlights();
     const container = document.getElementById('terminals-list');
     const headerTitle = document.querySelector('.mta-canonical-section__title[data-i18n="terminals"]');
+    const terminalsCount = document.getElementById('terminals-count');
     const terminalsTypeFilter = document.getElementById('terminals-type-filter');
     const airportsTypeFilter = document.getElementById('airports-type-filter');
     if (!container) return;
@@ -3792,12 +4455,17 @@ const updateTerminalsList = () => {
 
     if (view === 'terminals-flights') {
         // Show terminals with their flights as related items using canonical layout
-        // Update section header with count
         if (headerTitle) {
-            const baseText = `\u{1F3E2} ${t('terminals')}`;
-            headerTitle.textContent = `${baseText} (${terminals.length})`;
+            headerTitle.textContent = `\u{1F3E2} ${t('terminals')}`;
         }
-        updateTerminalTypeFilterLabels(terminals);
+
+        const businessViewTerminals = terminals.filter(terminalMatchesBusinessViewFilter);
+        const terminalsViewCount = businessViewTerminals.length;
+        if (terminalsCount) {
+            terminalsCount.classList.remove('mta-hidden');
+            terminalsCount.textContent = `(${terminalsViewCount})`;
+        }
+        updateTerminalTypeFilterLabels(businessViewTerminals);
         
         if (terminals.length === 0) {
             container.innerHTML = `<p class="text-muted">${t("noTerminals")}</p>`;
@@ -3814,13 +4482,14 @@ const updateTerminalsList = () => {
             return airport ? airport.name : t("unknown");
         };
 
-        const terminalCards = terminals.filter(terminalMatchesTypeFilter).map(term => {
+        const terminalCards = businessViewTerminals.filter(terminalMatchesTypeFilter).map(term => {
             const airportName = getAirportName(term.airportId);
             const metaphor = getTerminalMetaphor(term);
             const role = t(metaphor.roleKey);
             const subtype = metaphor.subtypeKey ? t(metaphor.subtypeKey) : null;
             const terminalLabel = subtype ? `${role} (${subtype})` : role;
             const totalAtTerminal = getMoneyAtTerminal(term.id);
+            const terminalBalanceLabel = getTerminalBalanceDisplayLabel(term);
             const terminalFlights = sortRelatedFlights(getTerminalLedgerWithBalances(term.id));
             const terminalSemaphoreColor = getSemaphoreColor(term, 'terminal', terminals);
             const terminalSemaphoreMarkup = `<span class="mta-semaphore mta-semaphore--${terminalSemaphoreColor}"></span>`;
@@ -3840,7 +4509,7 @@ const updateTerminalsList = () => {
                         </div>
                         <div class="mta-canonical-item__actions">
                             <div>
-                                <strong>${t("awaiting")}: ${formatCurrency(totalAtTerminal)}</strong>
+                                <strong>${terminalBalanceLabel}: ${formatCurrency(totalAtTerminal)}</strong>
                             </div>
                         </div>
                     </div>
@@ -3929,6 +4598,9 @@ const updateTerminalsList = () => {
     } else if (view === 'airports-terminals') {
         // Show airports with their terminals as related items using canonical layout
         // Update section header with count
+        if (terminalsCount) {
+            terminalsCount.classList.add('mta-hidden');
+        }
         if (headerTitle) {
             const baseText = `\u{1F3E2} ${t('airports')}`;
             headerTitle.textContent = `${baseText} (${airports.length})`;
@@ -4067,53 +4739,8 @@ const renderTerminalFlightsCompact = (terminalId) => {
 // SELECT POPULATION
 // ============================================================================
 const updateAllSelects = () => {
-    const allTerminals = getTerminals();
-    const allAirports = getAirports();
-    const groups = getPassengerGroups();
-
-    // Filter to active entities only
-    const terminals = allTerminals.filter(t => t.status === 'active');
-    const airports = allAirports.filter(a => a.status === 'active');
-
-    const originEl = document.getElementById('flight-origin');
-    if (originEl) {
-        originEl.innerHTML =
-            `<option value="">${t("selectOrigin")}</option>` +
-            terminals.filter(term => term.type === 'Income' || term.type === 'Transit').map(term => {
-                const airport = airports.find(a => a.id === term.airportId) || { name: t("unknown") };
-                return `<option value="${term.id}">${airport.name} / ${term.name}</option>`;
-            }).join('');
-    }
-
-    const destinationEl = document.getElementById('passenger-destination');
-    if (destinationEl) {
-        destinationEl.innerHTML =
-            `<option value="">${t("selectDestination")}</option>` +
-            terminals.map(term => {
-                const airport = airports.find(a => a.id === term.airportId) || { name: t("unknown") };
-                return `<option value="${term.id}">${airport.name} / ${term.name}</option>`;
-            }).join('');
-    }
-
-    const passengerGroupEl = document.getElementById('passenger-group');
-    if (passengerGroupEl) {
-        passengerGroupEl.innerHTML =
-            `<option value="">${t("selectGroupOrPlanned")}</option>` +
-            groups.map(g =>
-                `<option value="${g.id}">${g.name} - ${formatCurrency(g.totalAmount)}</option>`
-            ).join('');
-    }
-
-    const returnDestinationEl = document.getElementById('return-destination-terminal');
-    if (returnDestinationEl) {
-        const incomeTerminals = terminals.filter(term => term.type === 'Income');
-        returnDestinationEl.innerHTML =
-            `<option value="">${t("selectDestination")}</option>` +
-            incomeTerminals.map(term => {
-                const airport = airports.find(a => a.id === term.airportId) || { name: t("unknown") };
-                return `<option value="${term.id}">${airport.name} / ${term.name}</option>`;
-            }).join('');
-    }
+    populateArrivalFormSelects();
+    populateTerminalSelects('flight-form');
 };
 
 // ============================================================================
@@ -4220,6 +4847,9 @@ const updateAll = () => {
     applyCurrentUIPreferences();
     updateDashboard();
     updateFlightsList();
+    if (typeof window.updateQuickArrivalTab === 'function') {
+        window.updateQuickArrivalTab();
+    }
     updateArrivalsTab();
     updateTerminalsList();
     updateAllSelects();
@@ -4332,11 +4962,7 @@ const showFlightDetails = (flightId, mode = 'edit') => {
             ${childLegsWarning}
             <form id="flight-details-edit-form">
                 <div class="form-group">
-                    <label><strong>${t("flightId")}</strong></label>
-                    <input type="text" class="form-control" value="${flight.id}" readonly>
-                </div>
-                <div class="form-group">
-                    <label><strong>${t("name")}</strong></label>
+                    <label><strong>${t("departure.descriptionOptional")}</strong></label>
                     <input type="text" class="form-control" id="flight-details-name" value="${flight.name || ''}" ${!canModifyStructure ? 'disabled' : ''}>
                 </div>
                 <div class="form-group">
@@ -4356,21 +4982,22 @@ const showFlightDetails = (flightId, mode = 'edit') => {
                     <input type="number" class="form-control" id="flight-details-ordinal" min="0" step="1" value="${flight.ordinal ?? 0}" ${!canModifyStructure ? 'disabled' : ''}>
                 </div>
                 <div class="form-group">
-                    <label><strong>${t("origin")}</strong></label>
+                    <label><strong>${t("departure.fromTerminal")}</strong></label>
                     <select class="form-control" id="flight-details-origin" ${!canModifyStructure ? 'disabled' : ''}>${originOptions}</select>
                 </div>
                 <div class="form-group">
-                    <label><strong>${t("destination")}</strong></label>
+                    <label><strong>${t("departure.toTerminal")}</strong></label>
                     <select class="form-control" id="flight-details-destination" ${!canModifyStructure ? 'disabled' : ''}>${terminalOptions}</select>
+                </div>
+                <div class="form-group">
+                    <label><strong>${t("notes")}</strong></label>
+                    <textarea class="form-control" id="flight-details-notes" rows="3">${escapeHtml(flight.notes || '')}</textarea>
                 </div>
                 ${groupInfo}
                 ${sourceFlightInfo}
-                <div class="form-group">
-                    <label><strong>${t("created")}</strong></label>
-                    <input type="text" class="form-control" value="${new Date(flight.createdAt).toLocaleString()}" readonly>
-                </div>
+                <small class="text-muted d-block mb-3">${escapeHtml(getEntityMetaNoteText(flight))}</small>
                 <div class="mta-tools-button-row">
-                    ${canModifyStructure ? `<button type="submit" class="btn btn-primary btn-sm">${t("save")}</button>` : ''}
+                    <button type="submit" class="btn btn-primary btn-sm">${t("save")}</button>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="showFlightDetails('${flightId}', 'readonly')">${t("cancel")}</button>
                 </div>
             </form>
@@ -4381,7 +5008,7 @@ const showFlightDetails = (flightId, mode = 'edit') => {
         document.getElementById('overlay').classList.remove('mta-hidden');
 
         const form = document.getElementById('flight-details-edit-form');
-        if (form && canModifyStructure) {
+        if (form) {
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
                 saveFlightDetailsEdit(flightId);
@@ -4398,24 +5025,88 @@ const showFlightDetails = (flightId, mode = 'edit') => {
         <button class="btn btn-secondary btn-sm" onclick="closeDetails()">${t("close")}</button>
     `;
 
+    const group = flight.passengerGroupId ? getPassengerGroupById(flight.passengerGroupId) : null;
+    const readTravelMode = flight.status === 'Planned'
+        ? 'reserve'
+        : (group && group.type === 'liability' && group.extendable ? 'tab' : 'tickets');
+    const readOriginValue = getOriginDisplayName(flight, terminals, airports);
+    const readDestinationValue = getTerminalName(flight.destinationTerminalId);
+    const readLiabilityValue = group ? group.name : t("notSet");
+    const readDateValue = String(flight.date || '').slice(0, 10);
+    const readOrdinalValue = flight.ordinal === null || flight.ordinal === undefined ? '' : String(flight.ordinal);
+
     const html = `
         <h5>${t("flightDetails")}</h5>
         <hr>
-        <p><strong>${t("flightId")}:</strong> ${flight.id}</p>
-        <p><strong>${t("name")}:</strong> ${flight.name || t("flight")}</p>
-        <p><strong>${t("status")}:</strong> <span class="badge badge-${statusBadge}">${flight.status}</span></p>
-        <p><strong>${t("amount")}: </strong> ${formatCurrency(flight.amount || 0)}</p>
-        <p><strong>${t("date")}: </strong> ${String(flight.date || '').slice(0, 10) || t("notSet")}</p>
-        <p><strong>${t("departure.ordinal")}:</strong> ${flight.ordinal ?? 0}</p>
-        ${groupInfo}
-        ${sourceFlightInfo}
-        <p><strong>${t("origin")}: </strong> ${getOriginDisplayName(flight, terminals, airports)}</p>
-        <p><strong>${t("destination")}: </strong> ${getTerminalName(flight.destinationTerminalId)}</p>
+        <form>
+            <div class="form-group">
+                <div class="custom-control custom-radio mb-3">
+                    <input type="radio" class="custom-control-input" id="flight-read-mode-tickets" name="flight-read-mode" value="tickets" ${readTravelMode === 'tickets' ? 'checked' : ''} disabled>
+                    <label class="custom-control-label" for="flight-read-mode-tickets">
+                        <span>${t("departure.option.tickets")}</span>
+                    </label>
+                </div>
+                <div class="custom-control custom-radio mb-3">
+                    <input type="radio" class="custom-control-input" id="flight-read-mode-tab" name="flight-read-mode" value="tab" ${readTravelMode === 'tab' ? 'checked' : ''} disabled>
+                    <label class="custom-control-label" for="flight-read-mode-tab">
+                        <span>${t("departure.option.tab")}</span>
+                    </label>
+                </div>
+                <div class="custom-control custom-radio mb-3">
+                    <input type="radio" class="custom-control-input" id="flight-read-mode-reserve" name="flight-read-mode" value="reserve" ${readTravelMode === 'reserve' ? 'checked' : ''} disabled>
+                    <label class="custom-control-label" for="flight-read-mode-reserve">
+                        <span>${t("departure.option.reserve")}</span>
+                    </label>
+                </div>
+            </div>
+            <hr>
+            <div class="form-group">
+                <label><strong>${t("amount")}</strong>:</label>
+                <input type="number" class="form-control" value="${Number(flight.amount || 0)}" readonly>
+            </div>
+            ${readTravelMode === 'tickets' ? `
+            <div class="form-group">
+                <label><strong>${t("departure.fromTerminal")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(readOriginValue || t("notSet"))}" readonly>
+            </div>
+            ` : ''}
+            ${readTravelMode === 'tab' ? `
+            <div class="form-group">
+                <label><strong>${t("departure.selectOriginArrival")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(readLiabilityValue)}" readonly>
+            </div>
+            ` : ''}
+            <div class="form-group">
+                <label><strong>${t("departure.toTerminal")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(readDestinationValue)}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("date")}</strong>:</label>
+                <input type="date" class="form-control" value="${readDateValue}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("departure.descriptionOptional")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(flight.name || '')}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("departure.ordinal")}</strong>:</label>
+                <input type="number" class="form-control" value="${readOrdinalValue}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("notes")}</strong>:</label>
+                <textarea class="form-control" rows="3" readonly>${escapeHtml(flight.notes || '')}</textarea>
+            </div>
+        </form>
+        <div class="mt-2">
+            <p><strong>${t("status")}:</strong> <span class="badge badge-${statusBadge}">${flight.status}</span></p>
+            ${groupInfo}
+            ${sourceFlightInfo}
+        </div>
         ${childLegsWarning}
         ${warningsHtml}
         ${returnHtml}
         <hr>
-        <small class="text-muted">${t("created")}:  ${new Date(flight.createdAt).toLocaleString()}</small>
+        <small class="text-muted d-block">${escapeHtml(getEntityMetaNoteText(flight))}</small>
         <br><br>
         <div class="mta-tools-button-row">${buttonGroup}</div>
     `;
@@ -4427,13 +5118,24 @@ const showFlightDetails = (flightId, mode = 'edit') => {
 
 window.saveFlightDetailsEdit = (flightId) => {
     try {
+        const childFlights = getFlights().filter(f => f.sourceFlightId === flightId);
+        if (childFlights.length > 0) {
+            updateFlight(flightId, {
+                notes: document.getElementById('flight-details-notes')?.value || ''
+            }, { metadataOnly: true });
+            showFlightDetails(flightId, 'readonly');
+            updateAll();
+            return;
+        }
+
         updateFlight(flightId, {
             name: document.getElementById('flight-details-name')?.value || null,
             amount: Number(document.getElementById('flight-details-amount')?.value || 0),
             date: document.getElementById('flight-details-date')?.value || null,
             ordinal: Number(document.getElementById('flight-details-ordinal')?.value || 0),
             originTerminalId: document.getElementById('flight-details-origin')?.value || null,
-            destinationTerminalId: document.getElementById('flight-details-destination')?.value || null
+            destinationTerminalId: document.getElementById('flight-details-destination')?.value || null,
+            notes: document.getElementById('flight-details-notes')?.value || ''
         }, { allowCompleted: true });
         showFlightDetails(flightId, 'readonly');
         updateAll();
@@ -4478,6 +5180,10 @@ const showCreateReturnFlightForm = (parentFlightId) => {
                 <label>${t("returnAmount")}:</label>
                 <input type="number" id="return-amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" max="${remaining}" required>
             </div>
+            <div class="form-group">
+                <label>${t("notes")}:</label>
+                <textarea id="return-notes" class="form-control" rows="3"></textarea>
+            </div>
             <hr>
             <button type="submit" class="btn btn-primary btn-sm">${t("createReturn")}</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="showFlightDetails('${parentFlightId}')">${t("cancel")}</button>
@@ -4492,8 +5198,9 @@ const showCreateReturnFlightForm = (parentFlightId) => {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             const returnAmount = parseFloat(document.getElementById('return-amount').value);
+            const notes = document.getElementById('return-notes')?.value || '';
             try {
-                createReturnFlight(parentFlightId, returnAmount);
+                createReturnFlight(parentFlightId, returnAmount, null, null, notes);
                 showMessage(t("returnFlightCreated"));
                 closeDetails();
                 updateAll();
@@ -4533,36 +5240,75 @@ const showGroupDetails = (groupId, mode = 'view') => {
         }
     });
 
-    const typeLabel = group.type === 'external' ? t('availableFuel') : t('restrictedFuel');
+    const typeLabel = group.type === 'external' ? t('arrival.openTransit') : t('arrival.restrictedTransit');
     const landingDate = new Date(group.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const hasEditableCargo = group.type !== 'liability' && Array.isArray(group.cargo) && group.cargo.length > 0;
+    const hasEditableCargo = !!(viewState?.salesMode && group.type !== 'liability' && Array.isArray(group.cargo) && group.cargo.length > 0);
+    const creditAirport = group.creditAirportId ? getAirportById(group.creditAirportId) : null;
+    const showGroupNameField = !!(viewState?.salesMode && group.type !== 'liability');
+    const hideLandedPassengersForSeries = group.type === 'liability' && group.extendable === true;
 
     if (mode === 'view') {
         // VIEW MODE
         const html = `
             <h5>${t("groupDetails")}</h5>
             <hr>
-            <div class="form-group">
-                <label class="text-muted small"><strong>${t("type")}</strong></label>
-                <p>${typeLabel}</p>
-            </div>
-            <div class="form-group">
-                <label class="text-muted small"><strong>${t("name")}</strong></label>
-                <p>${group.name}</p>
-            </div>
-            ${group.type !== 'liability' ? `
-            <div class="form-group">
-                <label class="text-muted small"><strong>${t('arrival.groupName')}</strong></label>
-                <p>${group.groupName || '-'}</p>
-            </div>
-            ` : ''}
-            <div class="form-group">
-                <label class="text-muted small"><strong>${t("arrival.landingDate")}</strong></label>
-                <p>${landingDate}</p>
-            </div>
-            <div class="form-group">
-                <label class="text-muted small"><strong>${t("arrival.landedPassengers")}</strong></label>
-                <p>${formatCurrency(group.totalAmount)}</p>
+            <form>
+                <div class="form-group">
+                    <label><strong>${t("arrival.type")}</strong>:</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="view-group-type" id="view-type-open" value="external" ${group.type === 'external' ? 'checked' : ''} disabled>
+                        <label class="form-check-label" for="view-type-open">${t("arrival.openTransit")}</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="view-group-type" id="view-type-liability" value="liability" ${group.type === 'liability' ? 'checked' : ''} disabled>
+                        <label class="form-check-label" for="view-type-liability">
+                            <span>${t("arrival.restrictedTransit")}</span>
+                            <button type="button" class="mta-help-icon" onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.restrictedTransit')">?</button>
+                        </label>
+                    </div>
+                </div>
+                ${group.type === 'liability' ? `
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" ${group.extendable ? 'checked' : ''} disabled>
+                    <label class="form-check-label">
+                        <span>${t('arrival.extendable')}</span>
+                        <button type="button" class="mta-help-icon" onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.extendable')">?</button>
+                    </label>
+                </div>
+                ` : ''}
+                <div class="form-group">
+                    <label><strong>${t("arrival.name")}</strong>:</label>
+                    <input type="text" class="form-control" value="${escapeHtml(group.name || '')}" readonly>
+                </div>
+                ${showGroupNameField ? `
+                <div class="form-group">
+                    <label><strong>${t('arrival.groupName')}</strong>:</label>
+                    <input type="text" class="form-control" value="${escapeHtml(group.groupName || '')}" readonly>
+                </div>
+                ` : ''}
+                ${group.type === 'liability' ? `
+                <div class="form-group">
+                    <label><strong>${t('arrival.creditAirport')}</strong>:</label>
+                    <input type="text" class="form-control" value="${escapeHtml(creditAirport ? creditAirport.name : (t('notSet') || '-'))}" readonly>
+                </div>
+                ` : ''}
+                <div class="form-group">
+                    <label><strong>${t("arrival.landingDate")}</strong>:</label>
+                    <input type="text" class="form-control" value="${landingDate}" readonly>
+                </div>
+                ${!hideLandedPassengersForSeries ? `
+                <div class="form-group">
+                    <label><strong>${t("arrival.landedPassengers")}</strong>:</label>
+                    <input type="number" class="form-control" value="${Number(group.totalAmount || 0)}" readonly>
+                </div>
+                ` : ''}
+                <div class="form-group">
+                    <label><strong>${t("notes")}</strong>:</label>
+                    <textarea class="form-control" rows="3" readonly>${escapeHtml(group.notes || '')}</textarea>
+                </div>
+            </form>
+            <div class="mt-2">
+                <small class="text-muted d-block mb-2">${escapeHtml(getEntityMetaNoteText(group))}</small>
             </div>
             <hr>
             <div class="mta-tools-button-row">
@@ -4582,30 +5328,42 @@ const showGroupDetails = (groupId, mode = 'view') => {
             <hr>
             <form id="group-edit-form">
                 <div class="form-group">
-                    <label><strong>${t("type")}</strong> <span class="text-danger">*</span></label>
+                    <label><strong>${t("arrival.type")}</strong> <span class="text-danger">*</span></label>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="edit-group-type" id="edit-type-open" value="external" ${group.type === 'external' ? 'checked' : ''}>
                         <label class="form-check-label" for="edit-type-open">
-                            ${t("availableFuel")}
+                            ${t("arrival.openTransit")}
                         </label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="edit-group-type" id="edit-type-liability" value="liability" ${group.type === 'liability' ? 'checked' : ''}>
                         <label class="form-check-label" for="edit-type-liability">
-                            ${t("restrictedFuel")}
+                            <span>${t("arrival.restrictedTransit")}</span>
+                            <button type="button" class="mta-help-icon" onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.restrictedTransit')">?</button>
                         </label>
                     </div>
                 </div>
+                <div id="edit-group-series-checkbox-group" class="form-check mb-3 ${group.type === 'liability' ? '' : 'mta-hidden'}">
+                    <input class="form-check-input" type="checkbox" id="edit-group-extendable" ${group.extendable ? 'checked' : ''} disabled>
+                    <label class="form-check-label" for="edit-group-extendable">
+                        <span>${t('arrival.extendable')}</span>
+                        <button type="button" class="mta-help-icon" onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.extendable')">?</button>
+                    </label>
+                </div>
                 <div class="form-group">
-                    <label><strong>${t("name")}</strong> <span class="text-danger">*</span></label>
+                    <label><strong>${t("arrival.name")}</strong> <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="edit-group-name" value="${group.name}" required>
                 </div>
-                ${group.type !== 'liability' ? `
+                ${showGroupNameField ? `
                 <div class="form-group">
                     <label><strong>${t('arrival.groupName')}</strong></label>
                     <input type="text" class="form-control" id="edit-group-group-name" value="${String(group.groupName || '').replace(/"/g, '&quot;')}">
                 </div>
                 ` : ''}
+                <div id="edit-group-credit-airport-group" class="form-group ${group.type === 'liability' ? '' : 'mta-hidden'}">
+                    <label><strong>${t('arrival.creditAirport')}</strong></label>
+                    <input type="text" class="form-control" id="edit-group-credit-airport" value="${escapeHtml(creditAirport ? creditAirport.name : (t('notSet') || '-'))}" readonly>
+                </div>
                 <div class="form-group">
                     <label><strong>${t("arrival.landingDate")}</strong></label>
                     <input type="date" class="form-control" id="edit-group-date" value="${new Date(group.createdAt).toISOString().split('T')[0]}">
@@ -4617,10 +5375,15 @@ const showGroupDetails = (groupId, mode = 'view') => {
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addEditArrivalCargoRow()">${t('arrival.addCargoRow')}</button>
                 </div>
                 ` : ''}
-                <div class="form-group">
+                <div id="edit-group-amount-group" class="form-group ${hideLandedPassengersForSeries ? 'mta-hidden' : ''}">
                     <label><strong>${t("arrival.landedPassengers")}</strong> <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="edit-group-amount" value="${group.totalAmount}" step="0.01" min="0" required>
+                    <input type="number" class="form-control" id="edit-group-amount" value="${group.totalAmount}" step="0.01" min="0" ${hideLandedPassengersForSeries ? '' : 'required'}>
                 </div>
+                <div class="form-group">
+                    <label><strong>${t("notes")}</strong></label>
+                    <textarea class="form-control" id="edit-group-notes" rows="3">${escapeHtml(group.notes || '')}</textarea>
+                </div>
+                <small class="text-muted d-block mb-3">${escapeHtml(getEntityMetaNoteText(group))}</small>
                 <hr>
                 <div class="mta-tools-button-row">
                     <button type="button" class="btn btn-primary btn-sm" onclick="saveGroupEdit('${groupId}')">${t("save")}</button>
@@ -4632,6 +5395,34 @@ const showGroupDetails = (groupId, mode = 'view') => {
         document.getElementById('details').innerHTML = html;
         document.getElementById('details').classList.remove('mta-hidden');
         document.getElementById('overlay').classList.remove('mta-hidden');
+        const seriesCheckboxGroup = document.getElementById('edit-group-series-checkbox-group');
+        const creditAirportGroup = document.getElementById('edit-group-credit-airport-group');
+        const editAmountGroup = document.getElementById('edit-group-amount-group');
+        const editAmountInput = document.getElementById('edit-group-amount');
+        const updateEditSeriesVisibility = () => {
+            const selectedType = document.querySelector('input[name="edit-group-type"]:checked')?.value;
+            const isSeries = selectedType === 'liability' && (document.getElementById('edit-group-extendable')?.checked === true);
+            if (seriesCheckboxGroup) {
+                seriesCheckboxGroup.classList.toggle('mta-hidden', selectedType !== 'liability');
+            }
+            if (creditAirportGroup) {
+                creditAirportGroup.classList.toggle('mta-hidden', selectedType !== 'liability');
+            }
+            if (editAmountGroup) {
+                editAmountGroup.classList.toggle('mta-hidden', isSeries);
+            }
+            if (editAmountInput) {
+                if (isSeries) {
+                    editAmountInput.removeAttribute('required');
+                } else {
+                    editAmountInput.setAttribute('required', 'required');
+                }
+            }
+        };
+        document.querySelectorAll('input[name="edit-group-type"]').forEach(radio => {
+            radio.addEventListener('change', updateEditSeriesVisibility);
+        });
+        updateEditSeriesVisibility();
         if (hasEditableCargo) {
             window.renderEditArrivalCargoRows(group.cargo);
         }
@@ -4644,15 +5435,29 @@ window.saveGroupEdit = (groupId) => {
     const name = document.getElementById('edit-group-name').value;
     const typeRadio = document.querySelector('input[name="edit-group-type"]:checked');
     const type = typeRadio?.value;
-    const editCargoItems = typeof window.getEditArrivalCargoItems === 'function'
+    const editCargoContainer = document.getElementById('edit-arrival-cargo-rows');
+    const editCargoItems = (editCargoContainer && typeof window.getEditArrivalCargoItems === 'function')
         ? window.getEditArrivalCargoItems()
-        : [];
-    const cargoPayload = type !== 'liability' && editCargoItems.length > 0 ? editCargoItems : null;
+        : null;
+    let cargoPayload = null;
+    if (type !== 'liability') {
+        if (editCargoItems === null) {
+            cargoPayload = Array.isArray(group.cargo) && group.cargo.length > 0 ? group.cargo : null;
+        } else if (editCargoItems.length > 0) {
+            cargoPayload = editCargoItems;
+        }
+    }
     const cargoTotal = cargoPayload
-        ? Number(editCargoItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toFixed(2))
+        ? Number(cargoPayload.reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toFixed(2))
         : 0;
-    const amount = cargoPayload ? cargoTotal : parseFloat(document.getElementById('edit-group-amount').value);
-    const groupName = document.getElementById('edit-group-group-name')?.value || null;
+    const editAmountInput = document.getElementById('edit-group-amount');
+    const fallbackAmount = Number(group.totalAmount || 0);
+    const amount = cargoPayload
+        ? cargoTotal
+        : (editAmountInput ? parseFloat(editAmountInput.value) : fallbackAmount);
+    const groupNameInput = document.getElementById('edit-group-group-name');
+    const groupName = groupNameInput ? (groupNameInput.value || null) : (group.groupName || null);
+    const notes = document.getElementById('edit-group-notes')?.value || '';
 
     if (!name) {
         showMessage(t("pleaseEnterGroupName"), 'error');
@@ -4688,7 +5493,7 @@ window.saveGroupEdit = (groupId) => {
         return;
     }
 
-    updatePassengerGroup(groupId, { name, type, totalAmount: amount, groupName, cargo: cargoPayload || null });
+    updatePassengerGroup(groupId, { name, type, totalAmount: amount, groupName, cargo: cargoPayload || null, notes });
     showMessage(t("passengerGroupRegistered"));
     closeDetails();
     updateAll();
@@ -4725,20 +5530,45 @@ const showTerminalDetails = (terminalId, mode = 'edit') => {
 
     const terminalStatus = terminal.status || 'active'; // Default to 'active' for backward compatibility
     const statusBadge = terminalStatus === 'active' ? 'success' : 'secondary';
-    const returnableText = terminal.returnable ? `<span class="badge badge-info">${t("returnable")}</span>` : '';
 
     const html = `
         <h5>${t("terminalDetails")}</h5>
         <hr>
-        <p><strong>${t("name")}:</strong> ${terminal.name}</p>
-        <p><strong>${t("alias")}:</strong> <code>${terminal.alias}</code></p>
-        <p><strong>${t("airport")}:</strong> ${airport?.name || t("unknown")}</p>
-        <p><strong>${t("type")}:</strong> ${terminal.type}</p>
-        <p><strong>${t("role")}:</strong> ${terminalLabel}</p>
-        <p><strong>${t("status")}:</strong> <span class="badge badge-${statusBadge}">${terminalStatus}</span> ${returnableText}</p>
-        <p><strong>${t("isDefault")}:</strong> ${terminal.isDefault ? t("yes") : t("no")}</p>
+        <form>
+            <div class="form-group">
+                <label><strong>${t("airport")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(airport?.name || t("unknown"))}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("ui.terminals.type")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(terminal.type || '')}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("ui.terminals.name")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(terminal.name || '')}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("ui.terminals.alias")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(terminal.alias || '')}" readonly>
+            </div>
+            ${terminal.type === 'Expense' ? `
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" ${terminal.returnable ? 'checked' : ''} disabled>
+                <label class="form-check-label">${t("returnable")}</label>
+            </div>
+            ` : ''}
+            <div class="form-group">
+                <label><strong>${t("notes")}</strong>:</label>
+                <textarea class="form-control" rows="3" readonly>${escapeHtml(terminal.notes || '')}</textarea>
+            </div>
+        </form>
+        <div class="mt-2">
+            <p><strong>${t("role")}:</strong> ${terminalLabel}</p>
+            <p><strong>${t("status")}:</strong> <span class="badge badge-${statusBadge}">${terminalStatus}</span></p>
+            <p><strong>${t("isDefault")}:</strong> ${terminal.isDefault ? t("yes") : t("no")}</p>
+        </div>
         <hr>
-        <small class="text-muted">${t("created")}: ${new Date(terminal.createdAt).toLocaleString()}</small>
+        <small class="text-muted d-block">${escapeHtml(getEntityMetaNoteText(terminal))}</small>
         <br><br>
         <div class="mta-tools-button-row">
             <button class="btn btn-primary btn-sm" onclick="showEditTerminalForm('${terminalId}')">${t("edit")}</button>
@@ -4762,11 +5592,26 @@ const showAirportDetails = (airportId, mode = 'edit') => {
     const html = `
         <h5>${t("airportDetails")}</h5>
         <hr>
-        <p><strong>${t("name")}:</strong> ${airport.name}</p>
-        <p><strong>${t("type")}:</strong> ${airport.type || 'standard'}</p>
-        <p><strong>${t("status")}:</strong> <span class="badge badge-${statusBadge}">${airportStatus}</span></p>
+        <form>
+            <div class="form-group">
+                <label><strong>${t("ui.airports.name")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(airport.name || '')}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("ui.airports.type")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(airport.type || 'standard')}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("status")}</strong>:</label>
+                <input type="text" class="form-control" value="${escapeHtml(airportStatus)}" readonly>
+            </div>
+            <div class="form-group">
+                <label><strong>${t("notes")}</strong>:</label>
+                <textarea class="form-control" rows="3" readonly>${escapeHtml(airport.notes || '')}</textarea>
+            </div>
+        </form>
         <hr>
-        <small class="text-muted">${t("created")}: ${new Date(airport.createdAt).toLocaleString()}</small>
+        <small class="text-muted d-block">${escapeHtml(getEntityMetaNoteText(airport))}</small>
         <br><br>
         <div class="mta-tools-button-row">
             <button class="btn btn-primary btn-sm" onclick="showEditAirportForm('${airportId}')">${t("edit")}</button>
@@ -4826,59 +5671,6 @@ const showAssignGroupForm = (flightId) => {
 };
 
 window.showAssignGroupForm = showAssignGroupForm;
-
-// Buy Return Ticket Handler
-window.showBuyReturnTicketForm = (terminalId) => {
-    const terminal = getTerminalById(terminalId);
-    const airport = getAirportById(terminal.airportId);
-    const groups = getPassengerGroups();
-    const allTerminals = getTerminals();
-    const allAirports = getAirports();
-
-    // Filter to active terminals and airports
-    const terminals = allTerminals.filter(t => t.status === 'active');
-    const airports = allAirports.filter(a => a.status === 'active');
-
-    const balance = getMoneyAtTerminal(terminalId);
-
-    document.getElementById('return-terminal-id').value = terminalId;
-    document.getElementById('return-terminal-name').textContent = `${airport.name} / ${terminal.name}`;
-    document.getElementById('return-terminal-balance').textContent = formatCurrency(balance);
-    document.getElementById('return-amount').max = balance;
-    document.getElementById('return-amount').value = '';
-    document.getElementById('return-amount').focus();
-
-    const eligibleGroups = groups.filter(g => g.type === 'external');
-    document.getElementById('return-group-select').innerHTML =
-        `<option value="">${t("selectGroup")}</option>` +
-        eligibleGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
-
-    const incomeTerminals = terminals.filter(term => term.type === 'Income');
-    const destinationSelect = document.getElementById('return-destination-terminal');
-    if (destinationSelect) {
-        destinationSelect.innerHTML =
-            `<option value="">${t("selectDestination")}</option>` +
-            incomeTerminals.map(term => {
-                const destAirport = airports.find(a => a.id === term.airportId) || { name: t("unknown") };
-                return `<option value="${term.id}">${destAirport.name} / ${term.name}</option>`;
-            }).join('');
-    }
-
-    showPopup('buy-return-ticket-popup');
-};
-
-window.toggleReturnGroupFields = () => {
-    const option = document.querySelector('input[name="group-option"]:checked').value;
-    const existingField = document.getElementById('return-existing-group-field');
-    const newField = document.getElementById('return-new-group-field');
-    
-    if (existingField) {
-        option === 'existing' ? existingField.classList.remove('mta-hidden') : existingField.classList.add('mta-hidden');
-    }
-    if (newField) {
-        option === 'new' ? newField.classList.remove('mta-hidden') : newField.classList.add('mta-hidden');
-    }
-};
 
 // ============================================================================
 // v1 UI STATE MANAGEMENT - ControlTower & Learn sections

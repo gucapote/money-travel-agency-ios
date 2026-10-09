@@ -11,14 +11,14 @@ const createCreditAirportTerminals = (airportId) => {
     return { incomeTerminal, expenseTerminal };
 };
 
-const createAirport = (name, type = 'standard') => {
+const createAirport = (name, type = 'standard', notes = '') => {
     const allowedTypes = ['standard', 'credit'];
     if (!allowedTypes.includes(type)) {
         throw new Error('Invalid airport type');
     }
 
     const airports = getAirports();
-    const airport = buildAirport(name, type);
+    const airport = buildAirport(name, type, 'active', notes);
     airports.push(airport);
     saveAirports(airports);
 
@@ -44,7 +44,10 @@ const updateAirport = (id, updates) => {
         throw new Error('Airport type cannot be changed');
     }
 
-    const airportsUpdated = airports.map(a => a.id === id ? { ...a, ...updates } : a);
+    const normalizedUpdates = updates.notes !== undefined
+        ? { ...updates, notes: String(updates.notes || '').trim() }
+        : updates;
+    const airportsUpdated = airports.map(a => a.id === id ? { ...a, ...normalizedUpdates } : a);
     const updatedAirport = airportsUpdated.find(a => a.id === id);
 
     if (updatedAirport && updatedAirport.type === 'credit') {
@@ -129,7 +132,7 @@ const buildTerminalAlias = (value) => {
     return String(value || '').trim();
 };
 
-const createTerminal = (airportId, name, typeOrAlias = 'Transit', returnableOrLegacy = false, legacyType = null, isDefault = false) => {
+const createTerminal = (airportId, name, typeOrAlias = 'Transit', returnableOrLegacy = false, legacyType = null, isDefault = false, notes = '') => {
     const airport = getAirportById(airportId);
     if (!airport) {
         throw new Error('Airport does not exist');
@@ -160,7 +163,7 @@ const createTerminal = (airportId, name, typeOrAlias = 'Transit', returnableOrLe
     if (type !== 'Expense' && returnable) {
         throw new Error('Only Expense terminals can be returnable');
     }
-    const terminal = buildTerminal(airportId, name, alias, type, returnable, isDefault);
+    const terminal = buildTerminal(airportId, name, alias, type, returnable, isDefault, 'active', notes);
     let updated = [...terminals, terminal];
     
     // v1: Enforce at most 1 default per type
@@ -205,7 +208,10 @@ const updateTerminal = (id, updates) => {
         throw new Error('Only Expense terminals can be returnable');
     }
 
-    let updated = terminals.map(t => t.id === id ? { ...t, ...updates, alias: t.id === id ? nextAlias : t.alias } : t);
+    const normalizedUpdates = updates.notes !== undefined
+        ? { ...updates, notes: String(updates.notes || '').trim() }
+        : updates;
+    let updated = terminals.map(t => t.id === id ? { ...t, ...normalizedUpdates, alias: t.id === id ? nextAlias : t.alias } : t);
     
     // v1: Enforce at most 1 default per type
     if (nextIsDefault) {
@@ -307,7 +313,7 @@ const getTerminalMetaphor = (terminal) => {
 // ============================================================================
 // PRODUCTS
 // ============================================================================
-const createProduct = (code, name, defaultUnitPrice) => {
+const createProduct = (code, name, defaultUnitPrice, imageDataUrl = '') => {
     const normalizedCode = normalizeProductCode(code);
     const trimmedName = String(name || '').trim();
     const normalizedPrice = Number(defaultUnitPrice);
@@ -326,7 +332,7 @@ const createProduct = (code, name, defaultUnitPrice) => {
     if (products.some(product => product.status !== 'inactive' && normalizeProductCode(product.code || product.name) === normalizedCode)) {
         throw new Error('Product code must be unique');
     }
-    const product = buildProduct(normalizedCode, trimmedName, normalizedPrice, 'active');
+    const product = buildProduct(normalizedCode, trimmedName, normalizedPrice, 'active', imageDataUrl);
     products.push(product);
     saveProducts(products);
     return product;
@@ -345,6 +351,9 @@ const updateProduct = (id, updates) => {
         ? Number(updates.defaultUnitPrice)
         : existing.defaultUnitPrice;
     const nextStatus = updates.status !== undefined ? updates.status : existing.status;
+    const nextImageDataUrl = updates.imageDataUrl !== undefined
+        ? String(updates.imageDataUrl || '').trim()
+        : String(existing.imageDataUrl || '').trim();
 
     if (!nextCode) {
         throw new Error('Product code is required');
@@ -364,7 +373,7 @@ const updateProduct = (id, updates) => {
 
     saveProducts(products.map(product => (
         product.id === id
-            ? { ...product, code: nextCode, name: nextName, defaultUnitPrice: nextDefaultUnitPrice, status: nextStatus }
+            ? { ...product, code: nextCode, name: nextName, defaultUnitPrice: nextDefaultUnitPrice, status: nextStatus, imageDataUrl: nextImageDataUrl }
             : product
     )));
 };
@@ -384,7 +393,7 @@ const getProductById = (id) => getProducts().find(product => product.id === id);
 // ============================================================================
 // PASSENGER GROUPS
 // ============================================================================
-const createPassengerGroup = (name, totalAmount, type = null, creditAirportId = null, extendable = false, cargo = null, groupName = null) => {
+const createPassengerGroup = (name, totalAmount, type = null, creditAirportId = null, extendable = false, cargo = null, groupName = null, notes = '') => {
     if (!Number.isFinite(Number(totalAmount))) {
         throw new Error('Total amount must be provided as a number');
     }
@@ -435,7 +444,7 @@ const createPassengerGroup = (name, totalAmount, type = null, creditAirportId = 
     }
 
     const groups = getPassengerGroups();
-    const group = buildPassengerGroup(name, parseFloat(amt), inferredType, creditAirportId, extendable, cargoValidation.cargo, normalizedGroupName);
+    const group = buildPassengerGroup(name, parseFloat(amt), inferredType, creditAirportId, extendable, cargoValidation.cargo, normalizedGroupName, notes);
     groups.push(group);
     savePassengerGroups(groups);
 
@@ -456,6 +465,7 @@ const updatePassengerGroup = (id, updates) => {
     const nextExtendable = updates.extendable !== undefined ? Boolean(updates.extendable) : existing.extendable;
     const nextCargo = updates.cargo !== undefined ? updates.cargo : existing.cargo;
     const nextGroupName = updates.groupName !== undefined ? updates.groupName : existing.groupName;
+    const nextNotes = updates.notes !== undefined ? String(updates.notes || '').trim() : (existing.notes || '');
 
     if (!nextName) {
         throw new Error('Passenger group name is required');
@@ -511,7 +521,8 @@ const updatePassengerGroup = (id, updates) => {
         creditAirportId: nextCreditAirportId,
         extendable: nextType === 'liability' ? nextExtendable : false,
         cargo: cargoValidation.cargo,
-        groupName: normalizedGroupName
+        groupName: normalizedGroupName,
+        notes: nextNotes
     } : g);
     savePassengerGroups(updated);
 };
@@ -841,7 +852,7 @@ const allocateFIFO = (originTerminalId, amount) => {
  * - If parentFlightId is provided, children are attached to that existing Planned parent.
  * - Atomic: restores original flights if any child creation fails.
  */
-const createTerminalFundedFlight = (originTerminalId, destinationTerminalId, amount, name = null, date = null, parentFlightId = null, ordinalOverride = null) => {
+const createTerminalFundedFlight = (originTerminalId, destinationTerminalId, amount, name = null, date = null, parentFlightId = null, ordinalOverride = null, notes = '') => {
     if (!Number.isFinite(Number(amount))) {
         throw new Error('Amount must be provided as a number');
     }
@@ -855,6 +866,29 @@ const createTerminalFundedFlight = (originTerminalId, destinationTerminalId, amo
     }
     if (originTerminal.type === 'Expense') {
         throw new Error('Expense-origin flows must be created through createReturnFlight.');
+    }
+    if (parentFlightId) {
+        const parentFlight = getFlightById(parentFlightId);
+        if (!parentFlight) {
+            throw new Error('Parent flight not found.');
+        }
+        if (parentFlight.status !== 'Planned') {
+            throw new Error('To destination legs can only be added to planned journeys. Create a new departure for additional completed travel.');
+        }
+        const allFlights = getFlights();
+        const terminals = getTerminals();
+        const pendingCommitment = calculatePendingCommitmentForPlanned(parentFlight, allFlights, terminals);
+        const hasReturnLegs = allFlights.some(f =>
+            f.sourceFlightId === parentFlight.id &&
+            f.status === 'Completed' &&
+            isContractReturnFlight(f, terminals)
+        );
+        if (pendingCommitment <= 0) {
+            throw new Error('To destination legs can only be added while pending commitment remains.');
+        }
+        if (hasReturnLegs) {
+            throw new Error('To destination legs cannot be added after returns have started.');
+        }
     }
 
     const allocation = allocateFIFO(originTerminalId, amt);
@@ -882,7 +916,8 @@ const createTerminalFundedFlight = (originTerminalId, destinationTerminalId, amo
                 parentName,
                 date,
                 null,
-                ordinalOverride
+                ordinalOverride,
+                notes
             );
             result.parent = parentFlight;
             effectiveParentId = parentFlight.id;
@@ -901,7 +936,8 @@ const createTerminalFundedFlight = (originTerminalId, destinationTerminalId, amo
                 childName,
                 date,
                 effectiveParentId,
-                ordinalOverride
+                ordinalOverride,
+                notes
             );
             result.children.push(childFlight);
         });
@@ -1012,7 +1048,7 @@ const createCreditInjection = (passengerGroupId) => {
  * Creates a complete credit-card style transaction (injection + movement + repayment obligation)
  * All steps must succeed; if any fails, the entire operation rolls back
  */
-const executeExtendableCreditFlow = (passengerGroupId, destinationTerminalId, amount, name = null, date = null, ordinalOverride = null, reservedName = null) => {
+const executeExtendableCreditFlow = (passengerGroupId, destinationTerminalId, amount, name = null, date = null, ordinalOverride = null, reservedName = null, notes = '') => {
     if (!Number.isFinite(Number(amount))) {
         throw new Error('Amount must be provided as a number');
     }
@@ -1066,7 +1102,8 @@ const executeExtendableCreditFlow = (passengerGroupId, destinationTerminalId, am
             'Completed',                 // status
             date,                        // date
             null,                        // sourceFlightId
-            ordinalOverride
+            ordinalOverride,
+            notes
         );
 
         // STEP 3: Create movement flight (Income → destination)
@@ -1079,7 +1116,8 @@ const executeExtendableCreditFlow = (passengerGroupId, destinationTerminalId, am
             'Completed',                 // status
             date,                        // date
             null,                        // sourceFlightId
-            ordinalOverride
+            ordinalOverride,
+            notes
         );
 
         // STEP 4: Create repayment Planned flight (Income → Expense)
@@ -1092,7 +1130,8 @@ const executeExtendableCreditFlow = (passengerGroupId, destinationTerminalId, am
             'Planned',                   // status
             date,                        // date
             null,                        // sourceFlightId
-            ordinalOverride
+            ordinalOverride,
+            notes
         );
 
         const updatedFlights = [...originalFlights, injectionFlight, movementFlight, repaymentFlight];
@@ -1111,7 +1150,7 @@ const executeExtendableCreditFlow = (passengerGroupId, destinationTerminalId, am
     }
 };
 
-const createFlight = (passengerGroupId, originTerminalId, destinationTerminalId, amount, status = 'Planned', name = null, date = null, sourceFlightId = null, ordinalOverride = null) => {
+const createFlight = (passengerGroupId, originTerminalId, destinationTerminalId, amount, status = 'Planned', name = null, date = null, sourceFlightId = null, ordinalOverride = null, notes = '') => {
     if (!Number.isFinite(Number(amount))) {
         throw new Error('Amount must be provided as a number');
     }
@@ -1203,7 +1242,7 @@ const createFlight = (passengerGroupId, originTerminalId, destinationTerminalId,
 
     const flights = getFlights();
     const flightName = name || buildFlightName(originTerminalId, destinationTerminalId);
-    const flight = buildFlight(flightName, passengerGroupId, originTerminalId, destinationTerminalId, amt, normalizedStatus, date, sourceFlightId, ordinalOverride);
+    const flight = buildFlight(flightName, passengerGroupId, originTerminalId, destinationTerminalId, amt, normalizedStatus, date, sourceFlightId, ordinalOverride, notes);
     
     // v1: Validate subflight rules if sourceFlightId provided
     if (sourceFlightId) {
@@ -1227,6 +1266,12 @@ const updateFlight = (id, updates, options = {}) => {
     const flights = getFlights();
 
     const allowCompletedUpdate = options.allowCompleted === true;
+    const metadataOnly = options.metadataOnly === true;
+    if (metadataOnly) {
+        saveFlights(flights.map(f => f.id === id ? { ...f, notes: String(updates.notes || '').trim() } : f));
+        return;
+    }
+
     const childFlights = flights.filter(f => f.sourceFlightId === id);
     if (childFlights.length > 0) {
         throw new Error('Cannot update flight with existing legs');
@@ -1283,7 +1328,10 @@ const updateFlight = (id, updates, options = {}) => {
         }
     }
 
-    const updated = flights.map(f => f.id === id ? { ...f, ...updates, status: nextStatus, amount: nextAmount, date: nextDate, sourceFlightId: nextSourceFlightId } : f);
+    const normalizedUpdates = updates.notes !== undefined
+        ? { ...updates, notes: String(updates.notes || '').trim() }
+        : updates;
+    const updated = flights.map(f => f.id === id ? { ...f, ...normalizedUpdates, status: nextStatus, amount: nextAmount, date: nextDate, sourceFlightId: nextSourceFlightId } : f);
     saveFlights(updated);
     try {
         if (allowCompletedUpdate && (flight.status === 'Completed' || nextStatus === 'Completed')) {
@@ -1400,7 +1448,7 @@ const recalculateFromDate = (date) => recalculateAllocationsFromDate(date);
  * - Enforces per-PG allocation cap and Planned-root fulfillment cap.
  * - Creates exactly one Completed return flight with sourceFlightId = resolved root.
  */
-const createReturnFlight = (selectedFlightId, returnAmount, returnDate = null, returnName = null) => {
+const createReturnFlight = (selectedFlightId, returnAmount, returnDate = null, returnName = null, notes = '') => {
     if (!Number.isFinite(Number(returnAmount)) || Number(returnAmount) <= 0) {
         throw new Error('Return amount must be greater than 0');
     }
@@ -1411,6 +1459,26 @@ const createReturnFlight = (selectedFlightId, returnAmount, returnDate = null, r
     const caps = calculateReturnCaps(selectedFlightId, flights, terminals);
     if (!caps.valid) {
         throw new Error(caps.error);
+    }
+    const rootDestination = terminals.find(t => t.id === caps.rootFlight.destinationTerminalId);
+    if (!rootDestination || rootDestination.type !== 'Expense' || rootDestination.returnable !== true) {
+        throw new Error('Return legs can only be added to returnable journeys.');
+    }
+    const hasReturnLegs = flights.some(f =>
+        f.sourceFlightId === caps.rootFlight.id &&
+        f.status === 'Completed' &&
+        isContractReturnFlight(f, terminals)
+    );
+    if (caps.rootFlight.status === 'Planned') {
+        const pendingCommitment = calculatePendingCommitmentForPlanned(caps.rootFlight, flights, terminals);
+        if (!hasReturnLegs && pendingCommitment > 0) {
+            throw new Error('Return legs can only be added after pending commitment is fully fulfilled.');
+        }
+    } else if (caps.rootFlight.status !== 'Completed') {
+        throw new Error('Return legs can only be added to planned or completed journeys.');
+    }
+    if (caps.maxReturnable <= 0) {
+        throw new Error('This journey has no remaining return capacity.');
     }
     if (returnAmount > caps.remainingAllocatableForPG) {
         throw new Error(
@@ -1436,7 +1504,9 @@ const createReturnFlight = (selectedFlightId, returnAmount, returnDate = null, r
         Number(returnAmount),
         'Completed',
         effectiveDate,
-        caps.rootFlight.id
+        caps.rootFlight.id,
+        null,
+        notes
     );
 
     // Validate structure and balance integrity
@@ -1718,6 +1788,7 @@ const loadTestData = (data) => {
         name: a.name,
         type: a.type || 'standard',
         status: a.status || 'active',
+        notes: String(a.notes || '').trim(),
         createdAt: a.createdAt || new Date().toISOString()
     }));
 
@@ -1732,6 +1803,7 @@ const loadTestData = (data) => {
             type,
             returnable,
             isDefault: t.isDefault || false,
+            notes: String(t.notes || '').trim(),
             createdAt: t.createdAt || new Date().toISOString()
         };
     });
@@ -1744,6 +1816,7 @@ const loadTestData = (data) => {
         creditAirportId: g.creditAirportId || null,
         extendable: g.extendable || false,
         cargo: normalizeCargoEntries(g.cargo),
+        notes: String(g.notes || '').trim(),
         createdAt: g.createdAt || new Date().toISOString()
     }));
 
@@ -1753,6 +1826,7 @@ const loadTestData = (data) => {
         name: String(product.name || '').trim(),
         defaultUnitPrice: Number(product.defaultUnitPrice || 0),
         status: product.status || 'active',
+        imageDataUrl: String(product.imageDataUrl || '').trim(),
         createdAt: product.createdAt || new Date().toISOString()
     }));
 
@@ -1776,7 +1850,8 @@ const loadTestData = (data) => {
             date: f.date || new Date().toISOString(),
             ordinal: f.ordinal !== undefined ? f.ordinal : sameDayCount,
             createdAt: f.createdAt || new Date().toISOString(),
-            sourceFlightId: f.sourceFlightId || null
+            sourceFlightId: f.sourceFlightId || null,
+            notes: String(f.notes || '').trim()
         };
     });
 

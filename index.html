@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   Money Travel Agency (MTA)
   Created by Gabriel Capote (capotec.marketing@gmail.com)
   Copyright (c) 2026
@@ -34,6 +34,13 @@
 
     <!-- App stylesheet -->
     <link rel="stylesheet" href="css/mta-styles.css">
+
+    <!-- jQuery (required by Bootstrap) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
     <script type="module">
     import { t, i18n, setLanguage, getCurrentLanguage } from './scripts/mta-i18n.js';
     window.t = t;
@@ -76,6 +83,7 @@
     <!-- Mobile nav -->
     <nav id="mobile-nav" class="mobile-nav d-none" role="menu" aria-label="Main menu">
         <ul class="list-unstyled mb-0">
+            <li class="mta-sales-only mta-hidden"><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="quickArrival" data-toggle="tab" href="#quick-arrival">&#128722; Quick Arrival</a></li>
             <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="controlTower" data-toggle="tab" href="#dashboard">&#128508; Control Tower</a></li>
             <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="arrivals" data-toggle="tab" href="#income">&#128748; Arrivals</a></li>
             <li><a role="menuitem" tabindex="0" class="mobile-nav-link translatable" data-i18n="departures" data-icon="&#128747;" data-toggle="tab" href="#flights">&#128747; Departures</a></li>
@@ -87,6 +95,7 @@
 
     <!-- Tabs -->
     <ul class="nav nav-tabs d-none d-md-flex" role="tablist">
+        <li class="nav-item mta-sales-only mta-hidden"><a class="nav-link translatable" data-i18n="quickArrival" data-toggle="tab" href="#quick-arrival">&#128722; Quick Arrival</a></li>
         <li class="nav-item"><a class="nav-link active translatable" data-i18n="controlTower" data-toggle="tab" href="#dashboard">&#128508; Control Tower</a></li>
         <li class="nav-item"><a class="nav-link translatable" data-i18n="arrivals" data-toggle="tab" href="#income">&#128748; Arrivals</a></li>
         <li class="nav-item"><a class="nav-link translatable" data-i18n="departures" data-icon="&#128747;" data-toggle="tab" href="#flights">&#128747; Departures</a></li>
@@ -96,6 +105,22 @@
     </ul>
 
     <div class="tab-content app-content">
+        <!-- Tab: Quick Arrival -->
+        <div class="tab-pane fade" id="quick-arrival">
+            <div class="mt-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mta-canonical-section">
+                            <div class="mta-canonical-section__header">
+                                <h5 class="mta-canonical-section__title mb-0 translatable" data-i18n="quickArrival">&#128722; QUICK ARRIVAL</h5>
+                                <div class="mta-canonical-section__actions d-flex align-items-center" id="quick-arrival-language-selector"></div>
+                            </div>
+                            <div id="quick-arrival-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- Tab: Dashboard -->
         <div class="tab-pane fade show active" id="dashboard">
@@ -130,6 +155,7 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <div class="mta-canonical-section">
+                            <div id="arrivals-navigation-context" class="mta-navigation-context mta-hidden" data-navigation-context-for="#income"></div>
                             <div class="mta-canonical-section__header">
                                 <div class="mta-section-header__main d-flex align-items-center flex-wrap">
                                     <h5 id="arrivals-section-title" class="mta-canonical-section__title mb-0">
@@ -173,6 +199,7 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <div class="mta-canonical-section">
+                            <div id="departures-navigation-context" class="mta-navigation-context mta-hidden" data-navigation-context-for="#flights"></div>
                             <div class="mta-canonical-section__header">
                                 <div class="d-flex align-items-center">
                                     <h5 id="departures-section-title" class="mta-canonical-section__title mb-0">
@@ -181,8 +208,8 @@
                                     </h5>
                                     <span class="mx-2">&gt;</span>
                                     <select id="departures-view-select" class="form-control form-control-sm" onchange="setDepartureViewFilter(this.value)" style="width: auto;">
-                                        <option value="reservations" class="translatable" data-i18n="ui.departuresView.yetToTravel">YET TO TRAVEL</option>
                                         <option value="all" class="translatable" data-i18n="ui.departuresView.allCaps">ALL</option>
+                                        <option value="reservations" class="translatable" data-i18n="ui.departuresView.yetToTravel">YET TO TRAVEL</option>
                                         <option value="completed" class="translatable" data-i18n="ui.departuresView.completedCaps">COMPLETED</option>
                                         <option value="returned" class="translatable" data-i18n="ui.departuresView.returnedCaps">RETURNED</option>
                                     </select>
@@ -211,8 +238,17 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <div class="mta-canonical-section">
+                            <div id="terminals-navigation-context" class="mta-navigation-context mta-hidden" data-navigation-context-for="#terminals"></div>
                             <div class="mta-canonical-section__header">
-                                <h5 class="mta-canonical-section__title mb-0 translatable" data-i18n="terminals">&#127970; TERMINALS</h5>
+                                <div class="d-flex align-items-center">
+                                    <h5 class="mta-canonical-section__title mb-0 translatable" data-i18n="terminals">&#127970; TERMINALS</h5>
+                                    <span class="mx-2">&gt;</span>
+                                    <select id="terminals-view-select" class="form-control form-control-sm" onchange="setTerminalBusinessViewFilter(this.value)" style="width: auto;">
+                                        <option value="all" class="translatable" data-i18n="ui.terminalsView.all">ALL</option>
+                                        <option value="waiting-passengers" class="translatable" data-i18n="waitingPassengers">WAITING PASSENGERS</option>
+                                    </select>
+                                    <span id="terminals-count" class="ml-2">(0)</span>
+                                </div>
                                 <div class="mta-canonical-section__actions d-flex align-items-center">
                                     <button class="btn btn-primary translatable mta-hidden" id="btn-new-airport" data-i18n="newAction" onclick="showCreateAirportForm()">New</button>
                                     <button class="btn btn-primary translatable" id="btn-new-terminal" data-i18n="newAction" onclick="showCreateTerminalForm()">New</button>
@@ -341,11 +377,20 @@
                             
                             <hr>
                             <h6 class="translatable" data-i18n="ui.tools.displayOptions">Display Options</h6>
-                            <button class="btn btn-outline-primary btn-sm translatable" id="ledger-mode-toggle" onclick="toggleLedgerMode()" data-i18n="ui.tools.enableRunning">&#128202; Enable running</button>
+                            <div class="custom-control custom-switch mb-1">
+                                <input type="checkbox" class="custom-control-input" id="ledger-mode-toggle" onchange="setLedgerModeEnabled(this.checked)">
+                                <label class="custom-control-label translatable" for="ledger-mode-toggle" data-i18n="ui.tools.enableRunning">Enable running</label>
+                            </div>
                             <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.runningHint">Toggle running values across the main sections.</p>
-                            <button class="btn btn-outline-danger btn-sm translatable" id="delete-enabled-mode-toggle" onclick="toggleDeleteEnabledMode()" data-i18n="ui.tools.deleteEnabledMode">&#128465; Delete Enabled Mode</button>
+                            <div class="custom-control custom-switch mb-1">
+                                <input type="checkbox" class="custom-control-input" id="delete-enabled-mode-toggle" onchange="setDeleteEnabledMode(this.checked)">
+                                <label class="custom-control-label translatable" for="delete-enabled-mode-toggle" data-i18n="ui.tools.enableDeleteMode">Enable delete mode</label>
+                            </div>
                             <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.deleteEnabledModeHint">Show delete actions across all entities so data mistakes can be corrected deliberately.</p>
-                            <button class="btn btn-outline-warning btn-sm translatable" id="sales-mode-toggle" onclick="toggleSalesMode()" data-i18n="ui.tools.salesMode">&#128722; Sales Mode</button>
+                            <div class="custom-control custom-switch mb-1">
+                                <input type="checkbox" class="custom-control-input" id="sales-mode-toggle" onchange="setSalesModeEnabled(this.checked)">
+                                <label class="custom-control-label translatable" for="sales-mode-toggle" data-i18n="ui.tools.enableSalesMode">Enable sales mode</label>
+                            </div>
                             <p class="text-muted small mt-2 translatable" data-i18n="ui.tools.salesModeHint">Enable cargo and product features for sales-oriented arrivals.</p>
                             <div class="form-group mt-3 mb-2">
                                 <label class="small mb-1 translatable" for="default-arrival-name" data-i18n="ui.tools.defaultArrivalName">Default arrival name</label>
@@ -437,6 +482,14 @@
                     </label>
                 </div>
             </div>
+            <!-- Series Checkbox - shown only for Restricted Transit -->
+            <div id="series-checkbox-group" class="form-check mta-hidden">
+                <input class="form-check-input" type="checkbox" id="group-extendable">
+                <label class="form-check-label" for="group-extendable">
+                    <span class="translatable" data-i18n="arrival.extendable">Save as arrival series</span>
+                    <button type="button" class="mta-help-icon" onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.extendable')">?</button>
+                </label>
+            </div>
             <div class="form-group">
                 <label><strong class="translatable" data-i18n="arrival.name">Name</strong>:</label>
                     <input type="text" class="form-control" id="group-name" name="group-name" placeholder="Example: Dad's February Salary" required>
@@ -483,13 +536,6 @@
                         <option value="" class="translatable" data-i18n="arrival.selectCreditAirport">Select credit airport...</option>
                     </select>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="group-extendable">
-                    <label class="form-check-label" for="group-extendable">
-                        <span class="translatable" data-i18n="arrival.extendable">Open an arrival series</span>
-                        <button type="button" class="mta-help-icon" title="Open an arrival series: keep this credit route available for repeated future arrivals. The system will use the related credit airport and its managed terminals automatically." onclick="event.stopPropagation(); toggleHelpTooltip(this, 'arrival.help.extendable')">?</button>
-                    </label>
-                </div>
                 <div id="non-extendable-amount-group" class="form-group">
                     <label><strong class="translatable" data-i18n="arrival.landedPassengers">Landed passengers</strong>: <span class="text-danger">*</span></label>
                     <input type="number" class="form-control" id="restricted-amount" name="restricted-amount" step="0.01" min="0">
@@ -508,6 +554,10 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm translatable" id="arrival-add-cargo-row-btn" data-i18n="arrival.addCargoRow">+ Add cargo</button>
                 </div>
             </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="notes">Notes</strong>:</label>
+                <textarea class="form-control" id="group-notes" name="group-notes" rows="3"></textarea>
+            </div>
             <div class="mta-tools-button-row">
                 <button type="submit" class="btn btn-primary translatable" data-i18n="registerArrivalShort">Create Arrival</button>
                 <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('register-arrival-popup')">Cancel</button>
@@ -525,24 +575,32 @@
             <div class="form-group">
                 <div class="custom-control custom-radio mb-3">
                     <input type="radio" class="custom-control-input" id="travel-mode-tickets" name="travel-mode" value="tickets" checked>
-                    <label class="custom-control-label translatable" data-i18n="departure.option.tickets" for="travel-mode-tickets">
-                        I've got tickets
+                    <label class="custom-control-label" for="travel-mode-tickets">
+                        <span class="translatable" data-i18n="departure.option.tickets">I've got tickets</span>
+                        <button type="button" class="mta-help-icon" title="Use money already available in a terminal. MTA chooses the related arrival automatically using FIFO." onclick="event.stopPropagation(); toggleHelpTooltip(this, 'departure.help.tickets')">?</button>
                     </label>
                 </div>
                 <div class="custom-control custom-radio mb-3">
                     <input type="radio" class="custom-control-input" id="travel-mode-tab" name="travel-mode" value="tab">
-                    <label class="custom-control-label translatable" data-i18n="departure.option.tab" for="travel-mode-tab">
-                        Put it on my tab
+                    <label class="custom-control-label" for="travel-mode-tab">
+                        <span class="translatable" data-i18n="departure.option.tab">Put it on my tab</span>
+                        <button type="button" class="mta-help-icon" title="Use an open credit-backed arrival. MTA creates the credit movement and its repayment reservation." onclick="event.stopPropagation(); toggleHelpTooltip(this, 'departure.help.tab')">?</button>
                     </label>
                 </div>
                 <div class="custom-control custom-radio mb-3">
                     <input type="radio" class="custom-control-input" id="travel-mode-reserve" name="travel-mode" value="reserve">
-                    <label class="custom-control-label translatable" data-i18n="departure.option.reserve" for="travel-mode-reserve">
-                        Reserve for later
+                    <label class="custom-control-label" for="travel-mode-reserve">
+                        <span class="translatable" data-i18n="departure.option.reserve">Reserve for later</span>
+                        <button type="button" class="mta-help-icon" title="Create a planned commitment only. No money moves until you add a payment leg." onclick="event.stopPropagation(); toggleHelpTooltip(this, 'departure.help.reserve')">?</button>
                     </label>
                 </div>
             </div>
             <hr>
+
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="amount">Amount</strong>:</label>
+                <input type="number" class="form-control" id="flight-form-amount" step="0.01" required>
+            </div>
 
             <!-- Mode 1: "I've got tickets" (Terminal-Funded) -->
             <div id="mode-tickets-section" class="travel-mode-section">
@@ -574,26 +632,24 @@
                     <option value="" class="translatable" data-i18n="departure.selectDestinationTerminal">Select destination terminal...</option>
                 </select>
             </div>
+            <div id="date-field-group" class="form-group">
+                <label><strong class="translatable" data-i18n="date">Date</strong>:</label>
+                <input type="date" class="form-control" id="flight-form-date" required>
+            </div>
             <div class="form-group">
                 <label><strong class="translatable" data-i18n="departure.descriptionOptional">Description (Optional)</strong>:</label>
                 <input type="text" class="form-control translatable-placeholder" id="flight-form-name" data-i18n-placeholder="departure.descriptionPlaceholder" placeholder="e.g., Water bill, Electricity, Groceries...">
-            </div>
-            <div class="form-group">
-                <label><strong class="translatable" data-i18n="amount">Amount</strong>:</label>
-                <input type="number" class="form-control" id="flight-form-amount" step="0.01" required>
             </div>
             <div id="ordinal-field-group" class="form-group">
                 <label><strong class="translatable" data-i18n="departure.ordinal">Order</strong>:</label>
                 <input type="number" class="form-control" id="flight-form-ordinal" min="0" step="1">
             </div>
-            <div id="date-field-group" class="form-group">
-                <label><strong class="translatable" data-i18n="date">Date</strong>:</label>
-                <input type="date" class="form-control" id="flight-form-date" required>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="notes">Notes</strong>:</label>
+                <textarea class="form-control" id="flight-form-notes" rows="3"></textarea>
             </div>
 
-            <!-- Hidden field for passenger group (auto-populated in tickets mode) -->
             <input type="hidden" id="flight-form-edit-id" value="">
-            <input type="hidden" id="flight-form-passenger-group" value="">
 
             <div class="mta-tools-button-row">
                 <button type="submit" class="btn btn-primary translatable" data-i18n="createFlight">Create Flight</button>
@@ -610,10 +666,6 @@
         <p class="text-muted">Execute payment for a planned flight</p>
         <hr>
         <form id="flight-leg-dest-form">
-            <div class="form-group">
-                <label><strong>Description (Optional):</strong></label>
-                <input type="text" class="form-control" id="leg-dest-name" placeholder="e.g., Payment installment, Partial payment...">
-            </div>
             <div class="form-group">
                 <label><strong>From Terminal:</strong></label>
                 <select class="form-control" id="leg-dest-origin-terminal" required>
@@ -633,6 +685,14 @@
                 <label><strong>Date:</strong></label>
                 <input type="date" class="form-control" id="leg-dest-date" required>
             </div>
+            <div class="form-group">
+                <label><strong>Description (Optional):</strong></label>
+                <input type="text" class="form-control" id="leg-dest-name" placeholder="e.g., Payment installment, Partial payment...">
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="notes">Notes</strong>:</label>
+                <textarea class="form-control" id="leg-dest-notes" rows="3"></textarea>
+            </div>
             <div class="mta-tools-button-row">
                 <button type="submit" class="btn btn-primary">Create Payment Leg</button>
                 <button type="button" class="btn btn-secondary" onclick="closeLegDestModal()">Cancel</button>
@@ -649,19 +709,15 @@
         <hr>
         <form id="flight-leg-return-form">
             <div class="form-group">
-                <label><strong>Description (Optional):</strong></label>
-                <input type="text" class="form-control" id="leg-return-name" placeholder="e.g., Return, Refund...">
+                <label><strong>To Terminal:</strong></label>
+                <select class="form-control" id="leg-return-destination-terminal" required>
+                    <option value="">Select where money returns...</option>
+                </select>
             </div>
             <div class="form-group">
                 <label><strong>From Expense Terminal:</strong></label>
                 <input type="text" class="form-control" id="leg-return-origin-display" disabled>
                 <small class="text-muted">Automatically set to Expense</small>
-            </div>
-            <div class="form-group">
-                <label><strong>To Terminal:</strong></label>
-                <select class="form-control" id="leg-return-destination-terminal" required>
-                    <option value="">Select where money returns...</option>
-                </select>
             </div>
             <div class="form-group">
                 <label><strong>Return Amount:</strong></label>
@@ -671,46 +727,17 @@
                 <label><strong>Date:</strong></label>
                 <input type="date" class="form-control" id="leg-return-date" required>
             </div>
+            <div class="form-group">
+                <label><strong>Description (Optional):</strong></label>
+                <input type="text" class="form-control" id="leg-return-name" placeholder="e.g., Return, Refund...">
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="notes">Notes</strong>:</label>
+                <textarea class="form-control" id="leg-return-notes" rows="3"></textarea>
+            </div>
             <div class="mta-tools-button-row">
                 <button type="submit" class="btn btn-primary">Create Return Flight</button>
                 <button type="button" class="btn btn-secondary" onclick="closeLegReturnModal()">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Legacy passenger-form (kept for backward compatibility) -->
-<div id="create-passenger-popup" class="modal-popup mta-hidden">
-    <div class="modal-content">
-        <h5>Create Flight</h5>
-        <p class="text-muted">Allocate money from a group or plan an expense</p>
-        <hr>
-        <form id="passenger-form">
-            <div class="form-group">
-                <label><strong>From Passenger Group:</strong></label>
-                <select class="form-control" id="passenger-group">
-                    <option value="">Select group (or leave empty for planned expense)...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label><strong>Amount:</strong></label>
-                <input type="number" class="form-control" id="passenger-amount" step="0.01" required>
-            </div>
-            <div class="form-group">
-                <label><strong>Origin Terminal (optional):</strong></label>
-                <select class="form-control" id="flight-origin">
-                    <option value="">Select origin...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label><strong>Destination Terminal:</strong></label>
-                <select class="form-control" id="passenger-destination">
-                    <option value="">Select destination...</option>
-                </select>
-            </div>
-            <div class="mta-tools-button-row">
-                <button type="submit" class="btn btn-primary">Create Flight</button>
-                <button type="button" class="btn btn-secondary" onclick="closePopup('create-passenger-popup')">Cancel</button>
             </div>
         </form>
     </div>
@@ -741,6 +768,11 @@
                     <option class="translatable" data-i18n="inactive" value="inactive">inactive</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="notes">Notes</strong>:</label>
+                <textarea class="form-control" id="airport-notes" rows="3"></textarea>
+            </div>
+            <small id="airport-meta-note" class="text-muted d-block mb-3 mta-hidden"></small>
             <div class="mta-tools-button-row">
                 <button type="submit" class="btn btn-primary translatable" id="airport-submit-btn" data-i18n="save">Save</button>
                 <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('create-airport-popup')">Cancel</button>
@@ -766,14 +798,6 @@
                 Credit airports manage their terminals automatically.
             </div>
             <div class="form-group">
-                <label><strong class="translatable" data-i18n="ui.terminals.name">Terminal Name</strong>:</label>
-                <input type="text" class="form-control translatable-placeholder" id="terminal-name" data-i18n-placeholder="ui.terminals.namePlaceholder" placeholder="e.g., Salary, Rent" required>
-            </div>
-            <div class="form-group">
-                <label><strong class="translatable" data-i18n="ui.terminals.alias">Terminal Alias</strong>:</label>
-                <input type="text" class="form-control translatable-placeholder" id="terminal-code" data-i18n-placeholder="ui.terminals.aliasPlaceholder" placeholder="e.g., SAL, RENT, SAV" required>
-            </div>
-            <div class="form-group">
                 <label><strong class="translatable" data-i18n="ui.terminals.type">Terminal Type</strong>:</label>
                 <select class="form-control" id="terminal-type" required>
                     <option class="translatable" data-i18n="selectType" value="">Select type...</option>
@@ -781,6 +805,14 @@
                     <option class="translatable" data-i18n="ui.terminals.typeTransitHint" value="Transit">Transit (temporary storage)</option>
                     <option class="translatable" data-i18n="ui.terminals.typeExpenseHint" value="Expense">Expense (final destinations)</option>
                 </select>
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="ui.terminals.name">Terminal Name</strong>:</label>
+                <input type="text" class="form-control translatable-placeholder" id="terminal-name" data-i18n-placeholder="ui.terminals.namePlaceholder" placeholder="e.g., Salary, Rent" required>
+            </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="ui.terminals.alias">Terminal Alias</strong>:</label>
+                <input type="text" class="form-control translatable-placeholder" id="terminal-code" data-i18n-placeholder="ui.terminals.aliasPlaceholder" placeholder="e.g., SAL, RENT, SAV" required>
             </div>
             <div class="form-group mta-hidden" id="terminal-returnable-group">
                 <div class="custom-control custom-checkbox">
@@ -790,6 +822,11 @@
                     </label>
                 </div>
             </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="notes">Notes</strong>:</label>
+                <textarea class="form-control" id="terminal-notes" rows="3"></textarea>
+            </div>
+            <small id="terminal-meta-note" class="text-muted d-block mb-3 mta-hidden"></small>
             <div class="mta-tools-button-row">
                 <button type="submit" class="btn btn-primary translatable" id="terminal-submit-btn" data-i18n="save">Save</button>
                 <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('create-terminal-popup')">Cancel</button>
@@ -818,6 +855,13 @@
                 <label><strong class="translatable" data-i18n="defaultUnitPrice">Default unit price</strong>:</label>
                 <input type="number" class="form-control" id="product-default-unit-price" step="0.01" min="0" required>
             </div>
+            <div class="form-group">
+                <label><strong class="translatable" data-i18n="productImage">Product image</strong>:</label>
+                <input type="file" class="form-control-file" id="product-image-file" accept="image/*" onchange="handleProductImageFile(this)">
+                <input type="hidden" id="product-image-data-url">
+                <div id="product-image-preview" class="mta-product-image-preview mt-2"></div>
+            </div>
+            <small id="product-meta-note" class="text-muted d-block mb-3 mta-hidden"></small>
             <div id="product-form-actions" class="mta-tools-button-row mb-3">
                 <button type="submit" class="btn btn-primary translatable" id="product-submit-btn" data-i18n="save">Save</button>
                 <button type="button" class="btn btn-secondary translatable" data-i18n="cancel" onclick="closePopup('create-product-popup')">Cancel</button>
@@ -826,59 +870,6 @@
                 <button type="button" class="btn btn-primary translatable" id="product-read-edit-btn" data-i18n="edit">Edit</button>
                 <button type="button" class="btn btn-danger translatable" id="product-read-delete-btn" data-i18n="delete">Delete</button>
                 <button type="button" class="btn btn-secondary translatable" data-i18n="close" onclick="closePopup('create-product-popup')">Close</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Return ticket popup -->
-<div id="buy-return-ticket-popup" class="modal-popup mta-hidden">
-    <div class="modal-content">
-        <h5>&#8617; Buy Return Ticket</h5>
-        <p class="text-muted">Withdraw money from <strong id="return-terminal-name"></strong></p>
-        <p class="small">Available balance: <strong id="return-terminal-balance"></strong></p>
-        <hr>
-        <form id="return-ticket-form">
-            <input type="hidden" id="return-terminal-id">
-            
-            <div class="form-group">
-                <label><strong>Amount to Withdraw:</strong></label>
-                <input type="number" class="form-control" id="return-amount" step="0.01" min="0.01" placeholder="0.00" required>
-            </div>
-            
-                        <div class="form-group">
-                <label><strong>Destination Terminal (Income):</strong></label>
-                <select class="form-control" id="return-destination-terminal">
-                    <option value="">Select destination...</option>
-                </select>
-            </div>
-<div class="form-group">
-                <label><strong>Group Selection:</strong></label>
-                <div class="custom-control custom-radio">
-                    <input type="radio" class="custom-control-input" id="return-existing-group" name="group-option" value="existing" checked onchange="toggleReturnGroupFields()">
-                    <label class="custom-control-label" for="return-existing-group">Add to existing group</label>
-                </div>
-                <div class="custom-control custom-radio">
-                    <input type="radio" class="custom-control-input" id="return-new-group" name="group-option" value="new" onchange="toggleReturnGroupFields()">
-                    <label class="custom-control-label" for="return-new-group">Create new group</label>
-                </div>
-            </div>
-            
-            <div class="form-group" id="return-existing-group-field">
-                <label><strong>Select Group:</strong></label>
-                <select class="form-control" id="return-group-select">
-                    <option value="">Select group...</option>
-                </select>
-            </div>
-            
-            <div class="form-group mta-hidden" id="return-new-group-field">
-                <label><strong>New Group Name:</strong></label>
-                <input type="text" class="form-control" id="return-group-name" placeholder="e.g., Car Fund">
-            </div>
-            
-            <div class="mta-tools-button-row">
-                <button type="submit" class="btn btn-primary">&#8617; Buy Return Ticket</button>
-                <button type="button" class="btn btn-secondary" onclick="closePopup('buy-return-ticket-popup')">Cancel</button>
             </div>
         </form>
     </div>

@@ -6,6 +6,12 @@
 // ============================================================================
 (function(){
     const attachHandlers = function(){
+        document.addEventListener('click', (e) => {
+            const tabLink = e.target.closest && e.target.closest('.nav-tabs .nav-link[data-toggle="tab"], #mobile-nav .mobile-nav-link[data-toggle="tab"]');
+            if (tabLink && typeof window.clearNavigationContext === 'function') {
+                window.clearNavigationContext();
+            }
+        });
 
         // Income form - Register arrivals
         const incomeForm = document.getElementById('income-form');
@@ -16,6 +22,7 @@
                 radio.addEventListener('change', () => {
                     const openTransitFields = document.getElementById('open-transit-fields');
                     const restrictedTransitFields = document.getElementById('restricted-transit-fields');
+                    const seriesCheckboxGroup = document.getElementById('series-checkbox-group');
                     const type = document.querySelector('input[name="group-type"]:checked')?.value;
                     if (window.updateArrivalGroupNameFieldVisibility) {
                         window.updateArrivalGroupNameFieldVisibility(type);
@@ -31,6 +38,8 @@
                         // Show Restricted Transit, hide Open Transit
                         if (openTransitFields) openTransitFields.classList.add('mta-hidden');
                         if (restrictedTransitFields) restrictedTransitFields.classList.remove('mta-hidden');
+                        // Show series checkbox for Restricted Transit
+                        if (seriesCheckboxGroup) seriesCheckboxGroup.classList.remove('mta-hidden');
                         
                         // Remove required from open transit fields
                         const landingTerminal = document.getElementById('group-landing-terminal');
@@ -63,6 +72,8 @@
                         // Show Open Transit, hide Restricted Transit
                         if (openTransitFields) openTransitFields.classList.remove('mta-hidden');
                         if (restrictedTransitFields) restrictedTransitFields.classList.add('mta-hidden');
+                        // Hide series checkbox for Open Transit
+                        if (seriesCheckboxGroup) seriesCheckboxGroup.classList.add('mta-hidden');
                         
                         // Remove required from restricted transit fields
                         const creditAirport = document.getElementById('group-credit-airport');
@@ -139,6 +150,7 @@
                 try {
                     const name = document.getElementById('group-name').value;
                     const groupName = document.getElementById('group-group-name')?.value || null;
+                    const notes = document.getElementById('group-notes')?.value || '';
                     const trimmedArrivalName = String(name || '').trim();
                     const typeRadio = document.querySelector('input[name="group-type"]:checked');
                     const type = typeRadio?.value || 'external';
@@ -199,7 +211,7 @@
                         }
 
                         // Create liability passenger group
-                        const group = createPassengerGroup(name, amount, type, creditAirportId, extendable, cargoPayload, null);
+                        const group = createPassengerGroup(name, amount, type, creditAirportId, extendable, cargoPayload, null, notes);
                         const groupId = group.id;
                         
                         // AUTOMATIC CREDIT INJECTION RULE (v1)
@@ -262,7 +274,7 @@
                         }
 
                         // Create passenger group
-                        const group = createPassengerGroup(name, amount, type, null, false, cargoPayload, groupName);
+                        const group = createPassengerGroup(name, amount, type, null, false, cargoPayload, groupName, notes);
                         const groupId = group.id;
                         
                         // Create Flight 1: Load PG into Landing Terminal (allocation/intake flight with no origin)
@@ -291,47 +303,6 @@
             }
         }
 
-        // Flight form - Create flight (planned or completed)
-        const flightForm = document.getElementById('passenger-form');
-        if (flightForm) {
-            flightForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                try {
-                    let groupId = document.getElementById('passenger-group').value || null;
-                    const amount = document.getElementById('passenger-amount').value;
-                    const originTerminalId = document.getElementById('flight-origin')?.value || null;
-                    const destinationTerminalId = document.getElementById('passenger-destination')?.value || null;
-
-                    if (!destinationTerminalId) {
-                        throw new Error(t("pleaseSelectDestinationTerminal"));
-                    }
-
-                    if (groupId && !originTerminalId) {
-                        throw new Error(t("originTerminalRequiredForCompletedFlights"));
-                    }
-
-                    if (originTerminalId) {
-                        const result = createTerminalFundedFlight(originTerminalId, destinationTerminalId, amount);
-                        if (result.children.length > 1) {
-                            showMessage(t("createdFlightsFromTransit").replace('{count}', result.children.length));
-                        } else {
-                            showMessage(t("flightCreated"));
-                        }
-                    } else {
-                        const status = groupId ? 'Completed' : 'Planned';
-                        createFlight(groupId, originTerminalId, destinationTerminalId, amount, status);
-                        showMessage(t("flightCreated"));
-                    }
-
-                    e.target.reset();
-                    closePopup('create-passenger-popup');
-                    updateAll();
-                } catch (error) {
-                    showMessage(error.message, 'error');
-                }
-            });
-        }
-
         // Unified Flight Form (3-mode selector: tickets, tab, reserve)
         const unifiedFlightForm = document.getElementById('flight-form');
         if (unifiedFlightForm) {
@@ -354,6 +325,7 @@
                     const amount = parseFloat(document.getElementById('flight-form-amount').value);
                     const flightName = document.getElementById('flight-form-name').value || null; // Optional name
                     const ordinalRaw = document.getElementById('flight-form-ordinal')?.value;
+                    const notes = document.getElementById('flight-form-notes')?.value || '';
                     const ordinal = ordinalRaw === '' || ordinalRaw === null || ordinalRaw === undefined ? null : parseInt(ordinalRaw, 10);
                     
                     if (!travelMode) {
@@ -383,7 +355,8 @@
                             amount,
                             name: flightName,
                             date,
-                            ordinal
+                            ordinal,
+                            notes
                         });
                         showMessage(t("flightCreated"));
                         e.target.reset();
@@ -412,7 +385,8 @@
                             flightName,
                             date,
                             null,
-                            ordinal
+                            ordinal,
+                            notes
                         );
 
                     } else if (travelMode === 'tab') {
@@ -445,7 +419,8 @@
                             flightName,
                             date,
                             ordinal,
-                            reservedFlightName
+                            reservedFlightName,
+                            notes
                         );
                         
                         if (!creditFlow) {
@@ -464,7 +439,7 @@
                         }
 
                         // Create planned flight with null passengerGroupId and null originTerminalId
-                        const flight = createFlight(null, null, destinationTerminalId, amount, 'Planned', flightName, date, null, ordinal);
+                        const flight = createFlight(null, null, destinationTerminalId, amount, 'Planned', flightName, date, null, ordinal, notes);
                         
                         if (!flight) {
                             throw new Error('Failed to create planned flight');
@@ -493,6 +468,7 @@
                     const amount = parseFloat(document.getElementById('leg-dest-amount').value);
                     const date = document.getElementById('leg-dest-date').value;
                     const name = document.getElementById('leg-dest-name').value || null;
+                    const notes = document.getElementById('leg-dest-notes')?.value || '';
 
                     if (!parentFlightId) {
                         throw new Error(t("parentFlightNotFound") || "Parent flight not found");
@@ -517,7 +493,9 @@
                         amount,
                         name,
                         date,
-                        parentFlightId
+                        parentFlightId,
+                        null,
+                        notes
                     );
                     showMessage(t("paymentLegCreated") || "Payment leg created successfully");
                     
@@ -542,6 +520,7 @@
                     const amount = document.getElementById('leg-return-amount').value;
                     const date = document.getElementById('leg-return-date').value;
                     const name = document.getElementById('leg-return-name').value || null;
+                    const notes = document.getElementById('leg-return-notes')?.value || '';
 
                     if (!parentFlightId) {
                         throw new Error(t("parentFlightNotFound") || "Parent flight not found");
@@ -555,8 +534,15 @@
                         throw new Error(t("parentFlightNotFound") || "Parent flight not found");
                     }
 
+                    const returnSourceFlightId = typeof getReturnSourceFlightIdForRoot === 'function'
+                        ? getReturnSourceFlightIdForRoot(parentFlightId)
+                        : parentFlightId;
+                    if (!returnSourceFlightId) {
+                        throw new Error(t('ui.addLeg.returnNotAllowed') || 'Return leg is not allowed for this journey.');
+                    }
+
                     // Mode 4: Leg Return - origin is locked to Expense terminal
-                    const leg = createReturnFlight(parentFlightId, amount, date, name);
+                    const leg = createReturnFlight(returnSourceFlightId, amount, date, name, notes);
                     showMessage(t("returnLegCreated") || "Return leg created successfully");
                     
                     e.target.reset();
@@ -579,12 +565,13 @@
                     const name = document.getElementById('airport-name').value;
                     const type = document.getElementById('airport-type')?.value || 'standard';
                     const status = document.getElementById('airport-status')?.value || 'active';
+                    const notes = document.getElementById('airport-notes')?.value || '';
 
                     if (editId) {
-                        updateAirport(editId, { name, status });
+                        updateAirport(editId, { name, status, notes });
                         showMessage(t('ui.messages.airportSaved'));
                     } else {
-                        createAirport(name, type);
+                        createAirport(name, type, notes);
                         showMessage(t("airportCreatedSuccessfully"));
                     }
 
@@ -608,6 +595,7 @@
                     const name = document.getElementById('terminal-name').value;
                     const alias = document.getElementById('terminal-code').value;
                     const type = document.getElementById('terminal-type')?.value || 'Transit';
+                    const notes = document.getElementById('terminal-notes')?.value || '';
                     const returnableCheckbox = document.getElementById('terminal-returnable');
                     const selectedAirport = getAirportById(airportId);
                     const rawReturnable = !!returnableCheckbox?.checked;
@@ -624,53 +612,16 @@
                     const returnable = type === 'Expense' ? rawReturnable : false;
 
                     if (editId) {
-                        updateTerminal(editId, { name, alias, returnable });
+                        updateTerminal(editId, { name, alias, returnable, notes });
                         showMessage(t('ui.messages.terminalSaved'));
                     } else {
-                        createTerminal(airportId, name, alias, returnable, type);
+                        createTerminal(airportId, name, alias, returnable, type, false, notes);
                         showMessage(t("terminalCreatedSuccessfully"));
                     }
 
                     e.target.reset();
                     closePopup('create-terminal-popup');
                     updateAll();
-                } catch (error) {
-                    showMessage(error.message, 'error');
-                }
-            });
-        }
-
-        // Buy Return Ticket form
-        const returnForm = document.getElementById('return-ticket-form');
-        if (returnForm) {
-            returnForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                try {
-                    const terminalId = document.getElementById('return-terminal-id').value;
-                    const amount = parseFloat(document.getElementById('return-amount').value);
-                    const destinationTerminalId = document.getElementById('return-destination-terminal')?.value || null;
-
-                    if (!destinationTerminalId) {
-                        throw new Error(t("pleaseSelectDestinationTerminal"));
-                    }
-
-                    const balance = getMoneyAtTerminal(terminalId);
-                    if (amount > balance) {
-                        throw new Error(t("insufficientBalance").replace('{available}', formatCurrency(balance)));
-                    }
-
-                    const originTerminal = getTerminalById(terminalId);
-                    if (originTerminal && originTerminal.type === 'Expense') {
-                        throw new Error('Expense-origin return flows must be created from an eligible completed flight via createReturnFlight.');
-                    }
-
-                    createTerminalFundedFlight(terminalId, destinationTerminalId, amount);
-
-                    updateAll();
-
-                    showMessage(t("returnTicketPurchased"));
-                    e.target.reset();
-                    closePopup('buy-return-ticket-popup');
                 } catch (error) {
                     showMessage(error.message, 'error');
                 }
@@ -994,11 +945,12 @@
                     const code = document.getElementById('product-code')?.value || '';
                     const name = document.getElementById('product-name')?.value || '';
                     const defaultUnitPrice = document.getElementById('product-default-unit-price')?.value || '0';
+                    const imageDataUrl = document.getElementById('product-image-data-url')?.value || '';
 
                     if (editId) {
-                        updateProduct(editId, { code, name, defaultUnitPrice });
+                        updateProduct(editId, { code, name, defaultUnitPrice, imageDataUrl });
                     } else {
-                        createProduct(code, name, defaultUnitPrice);
+                        createProduct(code, name, defaultUnitPrice, imageDataUrl);
                     }
 
                     closePopup('create-product-popup');
@@ -1008,6 +960,9 @@
                     }
                     if (typeof renderArrivalCargoRows === 'function') {
                         renderArrivalCargoRows(typeof getArrivalCargoItems === 'function' ? getArrivalCargoItems() : []);
+                    }
+                    if (typeof updateQuickArrivalTab === 'function') {
+                        updateQuickArrivalTab();
                     }
                     updateAll();
                 } catch (error) {

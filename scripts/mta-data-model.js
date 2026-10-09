@@ -16,11 +16,14 @@
  * @param {string} status - Airport status: 'active' | 'inactive' (default: 'active')
  * @returns {Object} Airport object with id, name, status, createdAt
  */
-const buildAirport = (name, type = 'standard', status = 'active') => ({
+const normalizeNotes = (notes) => String(notes || '').trim();
+
+const buildAirport = (name, type = 'standard', status = 'active', notes = '') => ({
     id: generateId('APT'),
     name,
     type: type || 'standard',
     status: status || 'active',
+    notes: normalizeNotes(notes),
     createdAt: new Date().toISOString()
 });
 
@@ -37,7 +40,7 @@ const buildAirport = (name, type = 'standard', status = 'active') => ({
  * @param {string} status - Terminal status: 'active' | 'inactive' (default: 'active')
  * @returns {Object} Terminal object
  */
-const buildTerminal = (airportId, name, alias, type = 'Transit', returnable = false, isDefault = false, status = 'active') => ({
+const buildTerminal = (airportId, name, alias, type = 'Transit', returnable = false, isDefault = false, status = 'active', notes = '') => ({
     id: generateId('TERM'),
     airportId,
     type,
@@ -46,6 +49,7 @@ const buildTerminal = (airportId, name, alias, type = 'Transit', returnable = fa
     returnable: returnable || false,
     isDefault: isDefault || false,
     status: status || 'active',
+    notes: normalizeNotes(notes),
     createdAt: new Date().toISOString()
 });
 
@@ -61,7 +65,7 @@ const buildTerminal = (airportId, name, alias, type = 'Transit', returnable = fa
  * @param {string|null} groupName - Optional display grouping label for standard arrivals
  * @returns {Object} PassengerGroup object
  */
-const buildPassengerGroup = (name, totalAmount, type = 'external', creditAirportId = null, extendable = false, cargo = null, groupName = null) => ({
+const buildPassengerGroup = (name, totalAmount, type = 'external', creditAirportId = null, extendable = false, cargo = null, groupName = null, notes = '') => ({
     id: generateId('PG'),
     name,
     totalAmount: parseFloat(totalAmount),
@@ -70,6 +74,7 @@ const buildPassengerGroup = (name, totalAmount, type = 'external', creditAirport
     extendable: type === 'liability' ? Boolean(extendable) : false,
     cargo: normalizeCargoEntries(cargo),
     groupName: type === 'liability' ? null : (String(groupName || '').trim() || null),
+    notes: normalizeNotes(notes),
     createdAt: new Date().toISOString()
 });
 
@@ -79,6 +84,7 @@ const buildPassengerGroup = (name, totalAmount, type = 'external', creditAirport
  * @param {string} name - Product name
  * @param {number} defaultUnitPrice - Default unit price
  * @param {string} status - Product status: 'active' | 'inactive'
+ * @param {string} imageDataUrl - Optional product image as a data URL
  * @returns {Object} Product object
  */
 const normalizeProductCode = (value) => String(value || '')
@@ -88,12 +94,13 @@ const normalizeProductCode = (value) => String(value || '')
     .replace(/^-+|-+$/g, '')
     .slice(0, 24);
 
-const buildProduct = (code, name, defaultUnitPrice, status = 'active') => ({
+const buildProduct = (code, name, defaultUnitPrice, status = 'active', imageDataUrl = '') => ({
     id: generateId('PRD'),
     code: normalizeProductCode(code),
     name: String(name || '').trim(),
     defaultUnitPrice: parseFloat(defaultUnitPrice),
     status: status || 'active',
+    imageDataUrl: String(imageDataUrl || '').trim(),
     createdAt: new Date().toISOString()
 });
 
@@ -160,7 +167,7 @@ const validateCargoEntries = (cargo, expectedTotalAmount = null) => {
  * @param {number|null} ordinalOverride - Explicit ordering override within same business date
  * @returns {Object} Flight object
  */
-const buildFlight = (name, passengerGroupId, originTerminalId, destinationTerminalId, amount, status, date = null, sourceFlightId = null, ordinalOverride = null) => {
+const buildFlight = (name, passengerGroupId, originTerminalId, destinationTerminalId, amount, status, date = null, sourceFlightId = null, ordinalOverride = null, notes = '') => {
     // Convert input date to ISO format for storage
     // Input: "YYYY-MM-DD" from HTML input or ISO string or Date object
     // Output: ISO string (stored in flight.date)
@@ -217,7 +224,8 @@ const buildFlight = (name, passengerGroupId, originTerminalId, destinationTermin
         date: flightDateIso,
         ordinal: ordinal,
         createdAt: new Date().toISOString(),
-        sourceFlightId: sourceFlightId || null
+        sourceFlightId: sourceFlightId || null,
+        notes: normalizeNotes(notes)
     };
 };
 

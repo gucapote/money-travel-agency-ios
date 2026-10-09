@@ -37,6 +37,6 @@ Start by exploring the **Learn** tab to understand the core concepts.
 
 ---
 
-**Version:** 1.2-beta  
+**Version:** 1.5-beta  
 **License:** MIT  
 © 2026 Gabriel Capote

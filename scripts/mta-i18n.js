@@ -23,9 +23,11 @@
     newTerminal: "New Terminal",
     createFlight: "Create Flight",
     tools: "Tools",
+    quickArrival: "Quick Arrival",
     products: "Products",
     productManager: "Products",
     productName: "Product name",
+    productImage: "Product image",
     defaultUnitPrice: "Default unit price",
     productCode: "Product code",
     learn: "Learn",
@@ -37,6 +39,7 @@
     transit: "Transit",
     liability: "Liability",
     amount: "Amount",
+    notes: "Notes",
     origin: "Origin",
     destination: "Destination",
     details: "Details",
@@ -111,7 +114,7 @@
       openTransit: "Open Transit",
       restrictedTransit: "Restricted Transit",
       creditAirport: "Credit Airport",
-      extendable: "Open an arrival series",
+      extendable: "Save as arrival series",
       landingDate: "Landing Date",
       landedPassengers: "Landed passengers",
       landingTerminal: "Landing Terminal",
@@ -123,7 +126,10 @@
       recordPassengerGroup: "Record a passenger group arrival"
     },
     'arrival.help.restrictedTransit': 'Restricted Transit: money arrives through a credit-backed path that needs more care.',
-    'arrival.help.extendable': 'Open an arrival series: keep this credit route available for repeated future arrivals. The system will use the related credit airport and its managed terminals automatically.',
+    'arrival.help.extendable': 'Use this when money is expected to arrive from the same credit source more than once, which is typical for credit cards. Future departures can automatically reuse this arrival series and create the corresponding repayment reservation.',
+    'departure.help.tickets': 'Use money already available in a terminal. MTA chooses the related arrival automatically using FIFO.',
+    'departure.help.tab': 'Use an open credit-backed arrival. MTA creates the credit movement and its repayment reservation.',
+    'departure.help.reserve': 'Create a planned commitment only. No money moves until you add a payment leg.',
     'arrival.cargoSection': 'Cargo (optional)',
     'arrival.cargoHint': 'Describe what entered with this arrival. Cargo is descriptive only.',
     'arrival.addCargoItem': '+ Add cargo (optional)',
@@ -243,6 +249,7 @@
     returnedLabel: "Returned",
     landedLabel: "Landed",
     yetToTravelLabel: "Yet to Travel",
+    stillOutsideLabel: "Still outside",
     howTravelLabel: "How did they travel? v",
     whereNowLabel: "What traffic are we handling? v",
     whereMustGoNowLabel: "Where must they go now? v",
@@ -256,6 +263,10 @@
     'ui.actions.createNew': 'Create new',
     'ui.actions.addSubflight': 'Add subflight',
     'ui.noItems': 'No items',
+    'ui.navigationContext.fromControlTower': 'Control Tower',
+    'ui.addLeg.noValidActions': 'No valid leg actions are available for this journey.',
+    'ui.addLeg.toDestinationNotAllowed': 'To destination legs can only be added to planned journeys.',
+    'ui.addLeg.returnNotAllowed': 'Return legs can only be added to completed returnable journeys with remaining return capacity.',
     
     // ControlTower section titles
     'ui.controlTower.stats': 'Financial Snapshot',
@@ -293,6 +304,7 @@
     'ui.dashboardFilter.all': 'All',
     'ui.dashboardFilter.currentMonth': 'Current Month',
     'ui.dashboardFilter.lastMonth': 'Last Month',
+    'ui.terminalsView.all': 'ALL',
     'ui.arrivalsCargoFilter.thisMonth': 'This Month',
     'ui.arrivalsCargoFilter.thisYear': 'This Year',
     'ui.arrivalsCargoView.last7Days': 'LAST 7 DAYS',
@@ -321,6 +333,8 @@
     'ui.terminals.typeTransitHint': 'Transit (temporary storage)',
     'ui.terminals.typeExpenseHint': 'Expense (final destinations)',
     'ui.terminals.returnableHint': '(Can withdraw money later - for Savings, Investments, etc.)',
+    'ui.terminals.balanceLabel.waitingPassengers': 'Waiting Passengers',
+    'ui.terminals.balanceLabel.travelers': 'Travelers',
 
     // Tools
     'ui.tools.dataManagement': 'Data Management',
@@ -332,10 +346,15 @@
     'ui.tools.resetTestData': 'Test Data',
     'ui.tools.displayOptions': 'Display Options',
     'ui.tools.enableRunning': 'Enable running',
+    'ui.tools.disableRunning': 'Disable running',
     'ui.tools.runningHint': 'Toggle running values across the main sections.',
     'ui.tools.deleteEnabledMode': 'Delete Enabled Mode',
+    'ui.tools.enableDeleteMode': 'Enable delete mode',
+    'ui.tools.disableDeleteMode': 'Disable delete mode',
     'ui.tools.deleteEnabledModeHint': 'Show delete actions across all entities so data mistakes can be corrected deliberately.',
     'ui.tools.salesMode': 'Sales Mode',
+    'ui.tools.enableSalesMode': 'Enable sales mode',
+    'ui.tools.disableSalesMode': 'Disable sales mode',
     'ui.tools.salesModeHint': 'Enable cargo and product features for sales-oriented arrivals.',
     'ui.tools.defaultArrivalName': 'Default arrival name',
     'ui.tools.defaultArrivalNameHint': 'Use this as the initial name for new standard arrivals. You can still change it when creating the arrival.',
@@ -355,6 +374,21 @@
     'ui.products.allProducts': 'All',
     'ui.products.visibleUnits': 'Visible units',
     'ui.products.yearTotal': 'Year total',
+    'ui.quickArrival.name': 'Arrival name',
+    'ui.quickArrival.date': 'Date',
+    'ui.quickArrival.terminal': 'Landing terminal',
+    'ui.quickArrival.summary': 'Cargo summary',
+    'ui.quickArrival.empty': 'Add products from the Products button, then tap photos to build cargo.',
+    'ui.quickArrival.noSelection': 'Tap product photos to add cargo.',
+    'ui.quickArrival.save': 'Save arrival',
+    'ui.quickArrival.registerButton': 'Register Arrival',
+    'ui.quickArrival.clear': 'Clear',
+    'ui.quickArrival.saved': 'Quick arrival saved.',
+    'ui.quickArrival.removeOne': 'Remove one',
+    'ui.quickArrival.selectTerminal': 'Select income terminal...',
+    'ui.quickArrival.defaultTerminalMissing': 'Configure a default arrival terminal in Tools.',
+    'ui.quickArrival.defaultTerminalRequired': 'Set a default arrival terminal in Tools before saving a quick arrival.',
+    'ui.quickArrival.defaultGroupRequired': 'Set a default group name in Tools before saving a quick arrival.',
     'ui.messages.confirmDeleteProduct': 'Are you sure you want to remove product "{name}" from the catalog?',
     'ui.messages.productSaved': 'Product saved successfully.',
     'ui.messages.productDeleted': 'Product removed successfully.',
@@ -478,8 +512,10 @@
     newTerminal: "Nueva Terminal",
     createFlight: "Crear Vuelo",
     tools: "Herramientas",
+    quickArrival: "Llegada Rapida",
     products: "Productos",
     productManager: "Productos",
+    productImage: "Imagen del producto",
     productName: "Nombre del producto",
     defaultUnitPrice: "Precio unitario por defecto",
     productCode: "Código del producto",
@@ -492,6 +528,7 @@
     transit: "Transito",
     liability: "Pasivo",
     amount: "Importe",
+    notes: "Notas",
     origin: "Origen",
     destination: "Destino",
     details: "Detalles",
@@ -566,7 +603,7 @@
       openTransit: "Transito abierto",
       restrictedTransit: "Transito restringido",
       creditAirport: "Aeropuerto de credito",
-      extendable: "Abrir una serie de llegadas",
+      extendable: "Guardar como serie de llegadas",
       landingDate: "Fecha de llegada",
       landedPassengers: "Pasajeros llegados",
       landingTerminal: "Terminal de llegada",
@@ -578,7 +615,10 @@
       recordPassengerGroup: "Registrar una llegada de grupo de pasajeros"
     },
     'arrival.help.restrictedTransit': 'Transito restringido: el dinero llega por una via respaldada por credito que requiere mas cuidado.',
-    'arrival.help.extendable': 'Abrir una serie de llegadas mantiene esta ruta de credito disponible para futuras llegadas repetidas. El sistema usara automaticamente el aeropuerto de credito relacionado y sus terminales gestionadas.',
+    'arrival.help.extendable': 'Utiliza esta opción cuando esperes recibir dinero más de una vez desde la misma fuente de crédito, algo habitual en las tarjetas de crédito. Las futuras salidas podrán reutilizar automáticamente esta serie de llegadas y crear la correspondiente reserva de devolución.',
+    'departure.help.tickets': 'Usa dinero que ya está disponible en una terminal. MTA elige automáticamente la llegada relacionada usando FIFO.',
+    'departure.help.tab': 'Usa una llegada abierta respaldada por crédito. MTA crea el movimiento de crédito y su reserva de pago.',
+    'departure.help.reserve': 'Crea solo un compromiso planificado. El dinero no se mueve hasta que añadas un tramo de pago.',
     'arrival.cargoSection': 'Carga (opcional)',
     'arrival.cargoHint': 'Describe lo que entró con esta llegada. La carga es solo descriptiva.',
     'arrival.addCargoItem': '+ Añadir carga (opcional)',
@@ -697,6 +737,7 @@
     returnedLabel: "Devuelto",
     landedLabel: "Llegó",
     yetToTravelLabel: "Aún por viajar",
+    stillOutsideLabel: "Aún fuera",
     howTravelLabel: "¿Cómo viajaron? v",
     whereNowLabel: "¿Qué tráfico estamos teniendo? v",
     whereMustGoNowLabel: "¿A dónde deben ir ahora? v",
@@ -709,6 +750,10 @@
     'ui.actions.createNew': 'Crear nuevo',
     'ui.actions.addSubflight': 'Agregar subvuelo',
     'ui.noItems': 'Sin elementos',
+    'ui.navigationContext.fromControlTower': 'Torre de Control',
+    'ui.addLeg.noValidActions': 'No hay acciones de tramo válidas para este viaje.',
+    'ui.addLeg.toDestinationNotAllowed': 'Los tramos a destino solo se pueden añadir a viajes planificados.',
+    'ui.addLeg.returnNotAllowed': 'Los tramos de devolución solo se pueden añadir a viajes completados y retornables con capacidad restante.',
     
     'ui.controlTower.stats': 'Resumen financiero',
     'ui.controlTower.arrivals': 'Llegadas',
@@ -743,6 +788,7 @@
     'ui.dashboardFilter.all': 'Todo',
     'ui.dashboardFilter.currentMonth': 'Mes Actual',
     'ui.dashboardFilter.lastMonth': 'Mes Anterior',
+    'ui.terminalsView.all': 'TODO',
     'ui.arrivalsCargoFilter.thisMonth': 'Este Mes',
     'ui.arrivalsCargoFilter.thisYear': 'Este Año',
     'ui.arrivalsCargoView.last7Days': 'ÚLTIMOS 7 DÍAS',
@@ -771,6 +817,8 @@
     'ui.terminals.typeTransitHint': 'Tránsito (almacenamiento temporal)',
     'ui.terminals.typeExpenseHint': 'Gasto (destinos finales)',
     'ui.terminals.returnableHint': '(Permite retirar dinero más adelante: ahorros, inversiones, etc.)',
+    'ui.terminals.balanceLabel.waitingPassengers': 'Pasajeros esperando',
+    'ui.terminals.balanceLabel.travelers': 'Viajeros',
 
     // Tools
     'ui.tools.dataManagement': 'Gestion de datos',
@@ -782,10 +830,15 @@
     'ui.tools.resetTestData': 'Datos de Prueba',
     'ui.tools.displayOptions': 'Opciones de visualizacion',
     'ui.tools.enableRunning': 'Activar acumulado',
+    'ui.tools.disableRunning': 'Desactivar acumulado',
     'ui.tools.runningHint': 'Alterna los valores acumulados en las secciones principales.',
     'ui.tools.deleteEnabledMode': 'Modo de borrado activado',
+    'ui.tools.enableDeleteMode': 'Activar modo borrado',
+    'ui.tools.disableDeleteMode': 'Desactivar modo borrado',
     'ui.tools.deleteEnabledModeHint': 'Muestra acciones de borrado en todas las entidades para corregir errores de datos de forma deliberada.',
     'ui.tools.salesMode': 'Modo Ventas',
+    'ui.tools.enableSalesMode': 'Activar modo ventas',
+    'ui.tools.disableSalesMode': 'Desactivar modo ventas',
     'ui.tools.salesModeHint': 'Activa las funciones de carga y productos para llegadas orientadas a ventas.',
     'ui.tools.defaultArrivalName': 'Nombre por defecto para llegadas',
     'ui.tools.defaultArrivalNameHint': 'Úsalo como nombre inicial para nuevas llegadas estándar. Podrás cambiarlo al registrar cada llegada.',
@@ -805,6 +858,21 @@
     'ui.products.allProducts': 'Todo',
     'ui.products.visibleUnits': 'Unidades visibles',
     'ui.products.yearTotal': 'Total anual',
+    'ui.quickArrival.name': 'Nombre de llegada',
+    'ui.quickArrival.date': 'Fecha',
+    'ui.quickArrival.terminal': 'Terminal de llegada',
+    'ui.quickArrival.summary': 'Resumen de carga',
+    'ui.quickArrival.empty': 'Agrega productos desde el boton Productos y toca las fotos para construir la carga.',
+    'ui.quickArrival.noSelection': 'Toca fotos de productos para agregar carga.',
+    'ui.quickArrival.save': 'Guardar llegada',
+    'ui.quickArrival.registerButton': 'Registrar Llegada',
+    'ui.quickArrival.clear': 'Limpiar',
+    'ui.quickArrival.saved': 'Llegada rapida guardada',
+    'ui.quickArrival.removeOne': 'Quitar uno',
+    'ui.quickArrival.selectTerminal': 'Selecciona terminal de ingresos...',
+    'ui.quickArrival.defaultTerminalMissing': 'Configura una terminal por defecto en Herramientas.',
+    'ui.quickArrival.defaultTerminalRequired': 'Configura una terminal por defecto en Herramientas antes de guardar una llegada rapida.',
+    'ui.quickArrival.defaultGroupRequired': 'Configura un nombre de grupo por defecto en Herramientas antes de guardar una llegada rapida.',
     'ui.messages.confirmDeleteProduct': '¿Seguro que quieres eliminar el producto "{name}" del catálogo?',
     'ui.messages.productSaved': 'Producto guardado correctamente.',
     'ui.messages.productDeleted': 'Producto eliminado correctamente.',
@@ -944,12 +1012,28 @@ export function getCurrentLanguage() {
   return currentLang;
 }
 
-// Load saved language preference
+const getBrowserPreferredLanguage = () => {
+  if (typeof navigator === 'undefined') return 'en';
+  const languages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language || ''];
+  const preferred = languages
+    .map(lang => String(lang || '').toLowerCase())
+    .find(lang => lang.startsWith('es') || lang.startsWith('en'));
+
+  return preferred && preferred.startsWith('es') ? 'es' : 'en';
+};
+
+// Load saved language preference, falling back to browser language on first access.
 if (typeof localStorage !== 'undefined') {
   const savedLang = localStorage.getItem('mta-language');
   if (savedLang && i18n[savedLang]) {
     currentLang = savedLang;
+  } else {
+    currentLang = getBrowserPreferredLanguage();
   }
+} else {
+  currentLang = getBrowserPreferredLanguage();
 }
 
 
